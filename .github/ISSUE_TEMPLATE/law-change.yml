@@ -1,0 +1,85 @@
+name: Law change / Thay đổi luật
+description: A new or amended legal document changes a salary, insurance or PIT parameter.
+title: "[law] "
+labels: ["law-change"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Only **issued** documents (signed, with a number) can be added; drafts (*dự thảo*) are tracked but not implemented.
+        Cảm ơn bạn! Chỉ văn bản **đã ban hành** (có số hiệu, đã ký) mới được đưa vào code; dự thảo chỉ được theo dõi.
+
+  - type: input
+    id: document
+    attributes:
+      label: Document number / Số hiệu văn bản
+      placeholder: "Nghị định 161/2026/NĐ-CP"
+    validations:
+      required: true
+
+  - type: input
+    id: link
+    attributes:
+      label: Link to the official text / Link toàn văn
+      description: vbpl.vn, chinhphu.vn, thuvienphapluat.vn, luatvietnam.vn…
+      placeholder: "https://..."
+    validations:
+      required: true
+
+  - type: input
+    id: signed
+    attributes:
+      label: Signing date / Ngày ký
+      placeholder: "YYYY-MM-DD"
+
+  - type: input
+    id: effective
+    attributes:
+      label: Effective date for salaries / Ngày áp dụng với tiền lương
+      description: The date from which salary payments use the new value (for tax-period changes, the first day of the period).
+      placeholder: "YYYY-MM-DD"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: parameters
+    attributes:
+      label: Affected parameters / Tham số bị ảnh hưởng
+      options:
+        - label: Base salary or reference level (lương cơ sở / mức tham chiếu) → social/health insurance cap
+        - label: Regional minimum wage (lương tối thiểu vùng) → unemployment insurance cap
+        - label: Insurance contribution rates (tỉ lệ đóng BHXH / BHYT / BHTN)
+        - label: Family deductions (giảm trừ gia cảnh)
+        - label: PIT brackets or rates (biểu thuế lũy tiến)
+        - label: Other / Khác
+
+  - type: textarea
+    id: values
+    attributes:
+      label: Old → new values / Giá trị cũ → mới
+      placeholder: |
+        Lương cơ sở: 2.340.000 → 2.530.000
+        Trần BHXH/BHYT: 46.800.000 → 50.600.000
+    validations:
+      required: true
+
+  - type: textarea
+    id: quote
+    attributes:
+      label: Relevant article / Trích dẫn điều khoản
+      description: Copy the article or clause that sets the value.
+      render: text
+
+  - type: textarea
+    id: example
+    attributes:
+      label: Example (optional) / Ví dụ (tùy chọn)
+      description: An income and the expected result under the new law, and where the result comes from.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: The document is officially issued, not a draft / Văn bản đã ban hành, không phải dự thảo
+          required: true

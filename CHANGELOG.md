@@ -1,0 +1,63 @@
+# Changelog
+
+All notable changes to this project are documented here. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
+[Semantic Versioning](https://semver.org/) with the rules in
+[CONTRIBUTING.md](CONTRIBUTING.md#versioning). In short:
+
+- **MINOR**: a new policy (law change), a changed statutory parameter, any
+  change of computed results, or new API.
+- **PATCH**: bug fixes that do not change any computed amount, docs, CLI wording.
+- **MAJOR**: breaking API change; from v1 on, the module path gets `/v2`.
+
+Entries that change computed amounts are marked **(results change)**.
+
+## [Unreleased]
+
+## [0.1.0] - 2026-10-14
+
+First public release.
+
+### Added
+
+- `GrossToNet` and `NetToGross` for resident employees on labour contracts of
+  3 months or more: compulsory insurance (BHXH 8%, BHYT 1.5%, BHTN 1%) with
+  caps, family deductions, progressive PIT, and employer contributions
+  (17.5% / 3% / 1%) with total employer cost.
+- `NetToGross` returns the smallest gross whose net equals the requested net.
+  Net never decreases as gross grows (steps of 0 or 1 VND), so every net up to
+  Net(`MaxGross`) is reachable.
+- Policies selected by salary payment date (cash basis), each with legal sources:
+  - from 2024-07-01: base salary 2,340,000; regional minimums (Decree 74/2024);
+    deductions 11M / 4.4M; 7-bracket schedule;
+  - from 2026-01-01: deductions 15.5M / 6.2M (Resolution 110/2025);
+    5-bracket schedule (Law 109/2025/QH15); regional minimums (Decree 293/2025);
+  - from 2026-07-01: base salary 2,530,000 (Decree 161/2026), social/health
+    cap 50.6M.
+
+  Sources cite the article and clause, checked against the legal texts on
+  2026-10-13 (see `docs/design.md` §14).
+- `PolicyAt` (returns a deep copy), `Policy.RegionalMinSalary`,
+  `Policy.MaxUnemploymentSalary`, `RoundToThousand`.
+- Optional fixed insurance base (`Options.InsuranceBase`).
+- Input bounds: `MaxGross` (10^14 VND) and `MaxDependents` (50).
+- CLI `vnsalary` with `gross`, `net` and `diff` commands, `--json`, and
+  `--lang vi|en`. Exit codes: 0 success, 1 calculation error, 2 usage error.
+- Tests: 25 golden cases with recorded sources (11 with odd amounts that pin
+  each rounding step), round-trip, minimality and step properties, fuzzing,
+  policy invariants, CLI tests with output snapshots.
+- CI on Go 1.22, oldstable and stable: vet, race detector, golangci-lint,
+  gofmt, fuzz smoke test.
+
+### Known limitations
+
+- No tax-exempt allowances, overtime premium, bonuses or 13th-month salary.
+- No annual PIT finalization; no 10% flat withholding (contracts under
+  3 months) or 20% non-resident rate.
+- Employer accident/occupational disease insurance is fixed at 0.5%
+  (some sectors may pay 0.3%); the 2% trade union fee is not included.
+- The caller chooses the region; an insurance base below the regional
+  minimum wage is not rejected.
+
+[Unreleased]: https://github.com/HuynhNhatKhanh/vnsalary/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/HuynhNhatKhanh/vnsalary/releases/tag/v0.1.0
