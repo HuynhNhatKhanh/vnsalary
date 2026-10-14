@@ -1,0 +1,229 @@
+package vnsalary
+
+import (
+	"time"
+)
+
+// VND is an amount in Vietnamese Dong as a whole number. Salaries are non-negative;
+// differences between two results (for example in a policy comparison) may be negative.
+type VND int64
+
+// Region represents the statutory minimum wage region (Vùng lương tối thiểu: 1, 2, 3, 4).
+type Region int
+
+const (
+	Region1 Region = 1
+	Region2 Region = 2
+	Region3 Region = 3
+	Region4 Region = 4
+)
+
+// Options specifies optional calculation parameters.
+type Options struct {
+	InsuranceBase *VND      // nil = based on gross salary; non-nil = contractual insurance salary (lương đóng bảo hiểm)
+	Dependents    int       // Qualifying dependents count (0..50) (số người phụ thuộc)
+	Region        Region    // Statutory minimum wage region (1..4) (vùng lương tối thiểu)
+	Date          time.Time // Salary payment date; selects the policy in force (cash basis, Law on PIT 109/2025/QH15 Art. 8.3)
+}
+
+// Insurance itemizes mandatory employee contributions.
+type Insurance struct {
+	Social       VND `json:"social"`       // Social insurance (BHXH) 8%
+	Health       VND `json:"health"`       // Health insurance (BHYT) 1.5%
+	Unemployment VND `json:"unemployment"` // Unemployment insurance (BHTN) 1%
+	Total        VND `json:"total"`        // Total employee insurance contribution
+}
+
+// Deductions itemizes personal and family tax relief deductions (giảm trừ gia cảnh).
+type Deductions struct {
+	Personal   VND `json:"personal"`   // Taxpayer personal deduction (giảm trừ bản thân)
+	Dependents VND `json:"dependents"` // Qualifying dependents deduction (giảm trừ người phụ thuộc)
+	Total      VND `json:"total"`      // Total deduction amount
+}
+
+// BracketLine details personal income tax paid at a specific progressive bracket.
+type BracketLine struct {
+	Bracket     int `json:"bracket"`      // Tax bracket index (1, 2, ...)
+	TaxablePart VND `json:"taxable_part"` // Income portion assessed within this bracket
+	RatePercent int `json:"rate_percent"` // Tax rate percentage (5, 10, 15, ...)
+	Tax         VND `json:"tax"`          // Tax amount accrued at this bracket
+}
+
+// EmployerCost itemizes statutory employer contributions and total company expenditure.
+type EmployerCost struct {
+	Social         VND `json:"social"`          // Social insurance (BHXH) 17.5% (14% pension/death, 3% sickness/maternity, 0.5% occupational accident)
+	Health         VND `json:"health"`          // Health insurance (BHYT) 3%
+	Unemployment   VND `json:"unemployment"`    // Unemployment insurance (BHTN) 1%
+	TotalInsurance VND `json:"total_insurance"` // Total employer contribution (21.5%)
+	TotalCost      VND `json:"total_cost"`      // Total employer cost = Gross + TotalInsurance
+}
+
+// PolicyRef provides references to statutory decrees and enacted legislation.
+type PolicyRef struct {
+	EffectiveFrom string   `json:"effective_from"`
+	Description   string   `json:"description"`    // Description in English
+	DescriptionVI string   `json:"description_vi"` // Description in Vietnamese (mô tả tiếng Việt)
+	Sources       []string `json:"sources"`        // Official statutory legal documents in Vietnamese
+}
+
+// Result holds the comprehensive breakdown of a salary calculation.
+type Result struct {
+	Gross            VND           `json:"gross"`
+	Net              VND           `json:"net"`
+	Insurance        Insurance     `json:"insurance"`
+	TaxableIncome    VND           `json:"taxable_income"`    // Total taxable income (thu nhập chịu thuế)
+	AssessableIncome VND           `json:"assessable_income"` // Income assessed for PIT after insurance and deductions (thu nhập tính thuế)
+	Deductions       Deductions    `json:"deductions"`
+	Tax              VND           `json:"tax"`
+	Brackets         []BracketLine `json:"brackets"`
+	Employer         EmployerCost  `json:"employer"`
+	Policy           PolicyRef     `json:"policy"`
+}
+
+func minVND(a, b VND) VND {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// GrossToNet converts Gross salary to Net take-home pay and itemizes all deductions.
+func GrossToNet(gross VND, opts Options) (Result, error) {
+	if gross < 0 {
+		return Result{}, ErrInvalidAmount
+	}
+	if gross > MaxGross {
+		return Result{}, ErrAmountTooLarge
+	}
+	if err := validateOptions(opts); err != nil {
+		return Result{}, err
+	}
+
+	policy, err := policyAt(opts.Date)
+	if err != nil {
+		return Result{}, err
+	}
+
+	res, err := computeNet(policy, gross, opts)
+	if err != nil {
+		return Result{}, err
+	}
+	res.Policy = res.Policy.clone() // prevent leaking shared slice to caller
+	return res, nil
+}
+
+// validateOptions verifies parameter boundaries shared between GrossToNet and NetToGross.
+func validateOptions(opts Options) error {
+	if opts.Dependents < 0 || opts.Dependents > MaxDependents {
+		return ErrInvalidDependents
+	}
+	if opts.Region < 1 || opts.Region > 4 {
+		return ErrInvalidRegion
+	}
+	if opts.InsuranceBase != nil {
+		if *opts.InsuranceBase < 0 {
+			return ErrInvalidAmount
+		}
+		if *opts.InsuranceBase > MaxGross {
+			return ErrAmountTooLarge
+		}
+	}
+	return nil
+}
+
+// computeNet evaluates the pure calculation logic of GrossToNet: no validation, no policy cloning.
+// Callers must have pre-validated gross and opts. Result.Policy.Sources references shared data,
+// so public exported functions must clone it before returning.
+func computeNet(policy *Policy, gross VND, opts Options) (Result, error) {
+	// 1. Determine base salary for mandatory insurance contributions
+	insSalary := gross
+	if opts.InsuranceBase != nil {
+		insSalary = *opts.InsuranceBase
+	}
+
+	// 2. Mandatory employee insurance (Bảo hiểm người lao động)
+	baseSH := minVND(insSalary, policy.MaxSocialHealthSalary)
+	baseU := minVND(insSalary, policy.MaxUnemploymentSalary(opts.Region))
+
+	empSocial := roundDiv(int64(baseSH)*8, 100)      // Social insurance (BHXH): 8%
+	empHealth := roundDiv(int64(baseSH)*15, 1000)    // Health insurance (BHYT): 1.5%
+	empUnemployment := roundDiv(int64(baseU)*1, 100) // Unemployment insurance (BHTN): 1%
+	totalEmpInsurance := empSocial + empHealth + empUnemployment
+
+	// Reject cases where mandatory insurance exceeds gross salary, causing negative net
+	if totalEmpInsurance > gross {
+		return Result{}, ErrInsuranceExceedsGross
+	}
+
+	// 3. Mandatory employer contributions (Chi phí người sử dụng lao động)
+	emprSocial := roundDiv(int64(baseSH)*175, 1000)   // Employer social insurance (BHXH): 17.5%
+	emprHealth := roundDiv(int64(baseSH)*3, 100)      // Employer health insurance (BHYT): 3%
+	emprUnemployment := roundDiv(int64(baseU)*1, 100) // Employer unemployment insurance (BHTN): 1%
+	totalEmprInsurance := emprSocial + emprHealth + emprUnemployment
+
+	// 4. Family tax relief deductions (Giảm trừ gia cảnh)
+	personalDeduction := policy.PersonalDeduction
+	dependentDeduction := policy.DependentDeduction * VND(opts.Dependents)
+	totalDeductions := personalDeduction + dependentDeduction
+
+	// 5. Taxable and assessable income (Thu nhập chịu thuế & Thu nhập tính thuế)
+	taxableIncome := gross // v1: exempt allowances not yet incorporated
+	assessableIncome := taxableIncome - totalEmpInsurance - totalDeductions
+	if assessableIncome < 0 {
+		assessableIncome = 0
+	}
+
+	// 6. Progressive personal income tax calculation (Thuế TNCN lũy tiến từng phần)
+	var totalTax VND
+	var brackets []BracketLine
+	remAssessable := assessableIncome
+	var prevLimit VND = 0
+
+	for i, b := range policy.Brackets {
+		if remAssessable <= 0 {
+			break
+		}
+
+		span := b.Limit - prevLimit
+		taxableInBracket := minVND(remAssessable, span)
+
+		if taxableInBracket > 0 {
+			ratePercent := int(b.RateNumerator * 100 / b.RateDenom)
+			bracketTax := roundDiv(int64(taxableInBracket)*b.RateNumerator, b.RateDenom)
+			totalTax += bracketTax
+
+			brackets = append(brackets, BracketLine{
+				Bracket:     i + 1,
+				TaxablePart: taxableInBracket,
+				RatePercent: ratePercent,
+				Tax:         bracketTax,
+			})
+
+			remAssessable -= taxableInBracket
+		}
+
+		prevLimit = b.Limit
+	}
+
+	// 7. Net take-home pay (Lương Net thực nhận)
+	net := gross - totalEmpInsurance - totalTax
+
+	return Result{
+		Gross:            gross,
+		Net:              net,
+		Insurance:        Insurance{Social: empSocial, Health: empHealth, Unemployment: empUnemployment, Total: totalEmpInsurance},
+		TaxableIncome:    taxableIncome,
+		AssessableIncome: assessableIncome,
+		Deductions:       Deductions{Personal: personalDeduction, Dependents: dependentDeduction, Total: totalDeductions},
+		Tax:              totalTax,
+		Brackets:         brackets,
+		Employer: EmployerCost{
+			Social:         emprSocial,
+			Health:         emprHealth,
+			Unemployment:   emprUnemployment,
+			TotalInsurance: totalEmprInsurance,
+			TotalCost:      gross + totalEmprInsurance,
+		},
+		Policy: policy.Ref,
+	}, nil
+}

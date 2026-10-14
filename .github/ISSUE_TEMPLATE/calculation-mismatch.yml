@@ -1,0 +1,43 @@
+name: Calculation mismatch / Kết quả tính lệch
+description: vnsalary gives a different amount than your payslip or another calculator.
+title: "[mismatch] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A difference of a few VND is usually a rounding convention (see "Rounding convention" in the README). A difference of 1,000 VND or more is a bug.
+        Lệch vài đồng thường do quy ước làm tròn (xem mục "Quy ước làm tròn" trong README). Lệch từ 1.000 đồng trở lên là lỗi.
+
+  - type: textarea
+    id: input
+    attributes:
+      label: Input / Đầu vào
+      description: Command or code, including dependents, region, payment date and insurance base.
+      placeholder: "vnsalary gross 23456789 -d 1 -r 1 --date 2026-03-15"
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: vnsalary result / Kết quả của vnsalary
+      description: Output of the same command with --json is easiest to compare.
+      render: json
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result and its source / Kết quả mong đợi và nguồn
+      description: Payslip, calculator URL, or a hand calculation with the legal basis.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: vnsalary version
+      placeholder: "v0.1.0"

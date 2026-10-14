@@ -1,0 +1,20 @@
+version: "2"
+
+linters:
+  # standard = errcheck, govet, ineffassign, staticcheck, unused
+  default: standard
+  enable:
+    - errorlint
+    - gocritic
+    - misspell
+    - unconvert
+    - usestdlibvars
+  exclusions:
+    # Do not require checking errors of fmt.Fprint*, Close, Flush, etc.
+    presets:
+      - std-error-handling
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
