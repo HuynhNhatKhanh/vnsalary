@@ -152,7 +152,7 @@ vnsalary covers **resident employees on labour contracts of 3 months or more**, 
 - **The 2% trade union fee is not in `Employer.TotalCost`.** It is not insurance, but the employer pays it.
 - **Region is the place of work**, not the head office or the employee's home. The library does not infer it; pass the region where the employee works.
 
-Planned work is listed in the [roadmap](docs/design.md#12-roadmap).
+Planned work is tracked in the [milestones](https://github.com/HuynhNhatKhanh/vnsalary/milestones); ideas and requests are welcome as issues.
 
 ---
 
