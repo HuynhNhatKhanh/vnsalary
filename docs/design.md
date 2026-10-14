@@ -254,29 +254,29 @@ and a real test of how pleasant the API is.
 
 ## 11. Known gaps
 
-Simplifications in v0.1.0 that affect real payrolls. The README lists them
-under "Limitations" so users do not mistake them for bugs; this table adds how
-each could be handled.
-
-| Gap | Today | Possible handling |
-|---|---|---|
-| `InsuranceBase` below the regional minimum wage | accepted and computed, although the law requires the contribution salary to be at least the regional minimum | return an error, or at least a warning in `Result` |
-| Employer accident/occupational-disease insurance (TNLĐ-BNN) | fixed at 0.5%, so employer BHXH is always 17.5% | some employers pay 0.3% instead of 0.5%; a draft decree (under review in September 2026) would lower it for all, possibly from 2027, and becomes a policy only once issued. Make the rate an option |
-| Trade union fee (2%) | not in `Employer.TotalCost` | not insurance, but the employer pays it; add it as a separate, optional line |
-| Region | chosen by the caller | the region is that of the place of work, not the head office or the employee's home; document this so users pick the right one |
+Simplifications in v0.1.0 that affect real payrolls are listed under
+"Limitations" in the README. Those with a planned fix are tracked as issues:
+insurance base below the regional minimum wage
+([#5](https://github.com/HuynhNhatKhanh/vnsalary/issues/5)), configurable
+employer accident insurance rate
+([#10](https://github.com/HuynhNhatKhanh/vnsalary/issues/10)) and the optional
+trade union fee ([#11](https://github.com/HuynhNhatKhanh/vnsalary/issues/11)).
+The region is the place of work; that is a documentation point, not a gap in
+the calculation.
 
 ## 12. Roadmap
 
-Ordered by how often users are likely to need each feature.
+Planned work is tracked as GitHub issues grouped by
+[milestone](https://github.com/HuynhNhatKhanh/vnsalary/milestones), ordered by
+how often users are likely to need it:
 
-| Version | Feature | Notes |
-|---|---|---|
-| v0.2 | **Tax-exempt income**: the overtime premium (the part paid above normal-hours pay), meal and phone allowances within the statutory limits | Almost every real payslip has them, so users will ask for this first. Requires separating taxable income and insurance salary from gross. |
-| v0.2 | **Bonuses** (13th-month, Tết) taxed in the month they are paid | A common question: "how much is withheld from a 20M bonus?" |
-| v0.3 | **Annual PIT finalization** | 2026 changed both the brackets and the base salary within the year, so monthly withholding and the annual settlement differ. Few web tools handle this well. |
-| v0.4 | **Special cases**: contracts under 3 months (10% withholding), non-residents (20%), foreign employees (no unemployment insurance) | One function or option per case, without bloating `Options`. |
-| in parallel | **`vnsalary-web`** repository: AWS Lambda API and a demo page | Real users, and the library is exercised as an outside client. |
-| later | **CLI binaries** (goreleaser, Homebrew/Scoop) | Usable without a Go toolchain. |
+- **v0.2.0**: tax-exempt income and bonuses, so real payslips can be computed.
+- **v0.3.0**: annual PIT finalization (2026 changed brackets and base salary
+  within the year).
+- **v0.4.0**: contracts under 3 months, non-residents, foreign employees.
+
+A web demo (`vnsalary-web`, a separate repository) and CLI binaries are planned
+outside these milestones.
 
 ## 13. Open questions
 

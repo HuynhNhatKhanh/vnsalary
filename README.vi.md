@@ -154,7 +154,7 @@ vnsalary áp dụng cho **người lao động cư trú, hợp đồng lao độ
 - **Kinh phí công đoàn 2% không nằm trong `Employer.TotalCost`.** Đây không phải bảo hiểm, nhưng công ty vẫn phải đóng.
 - **Vùng lương tính theo nơi người lao động làm việc**, không theo trụ sở công ty hay nơi ở. Thư viện không tự suy ra vùng; hãy truyền đúng vùng nơi làm việc.
 
-Các tính năng dự kiến nằm trong [roadmap](docs/design.md#12-roadmap).
+Các tính năng dự kiến được theo dõi trong [milestones](https://github.com/HuynhNhatKhanh/vnsalary/milestones); mọi ý tưởng và yêu cầu đều có thể mở issue.
 
 ---
 
