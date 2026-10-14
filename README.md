@@ -2,7 +2,6 @@
 
 [![CI](https://github.com/HuynhNhatKhanh/vnsalary/actions/workflows/ci.yml/badge.svg)](https://github.com/HuynhNhatKhanh/vnsalary/actions/workflows/ci.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/HuynhNhatKhanh/vnsalary.svg)](https://pkg.go.dev/github.com/HuynhNhatKhanh/vnsalary)
-[![Go Report Card](https://goreportcard.com/badge/github.com/HuynhNhatKhanh/vnsalary)](https://goreportcard.com/report/github.com/HuynhNhatKhanh/vnsalary)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > **Vietnam Gross ↔ Net Salary & PIT Calculator in pure Go.**  
