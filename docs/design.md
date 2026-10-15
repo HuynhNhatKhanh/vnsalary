@@ -288,7 +288,7 @@ how often users are likely to need it:
 
 - **v0.2.0** (released): warnings for inputs worth checking, starting with an
   insurance salary below the regional minimum wage.
-- **v0.3.0**: tax-exempt income and bonuses, so real payslips can be computed.
+- **v0.3.0** (released): tax-exempt income and bonuses, so real payslips can be computed.
 - **v0.4.0**: annual PIT finalization (2026 changed brackets and base salary
   within the year).
 - **v0.5.0**: contracts under 3 months, non-residents, foreign employees.
