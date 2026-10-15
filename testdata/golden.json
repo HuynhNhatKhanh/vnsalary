@@ -561,5 +561,33 @@
     "source": "Tham chiếu độc lập (script Python, phân số chính xác) theo Luật 109/2025, NĐ 253/2026 — CHƯA đối chiếu công cụ ngoài",
     "verified_at": "2026-10-15",
     "notes": "Thu nhập chịu thuế 18.800.000 (miễn 1.200.000); BH 2.100.000; thuế 60.000; thuế do thưởng 0."
+  },
+  {
+    "description": "2026-08 - 30M, no dependents, region 1 (policy from 2026-07-01, checked against TopCV)",
+    "gross": 30000000,
+    "dependents": 0,
+    "region": 1,
+    "date": "2026-08-10",
+    "ins_base": 0,
+    "expected_insurance_total": 3150000,
+    "expected_tax": 635000,
+    "expected_net": 26215000,
+    "source": "TopCV (topcv.vn/tinh-luong-gross-net, mốc từ 01/07/2026): khớp BH, thuế, net; nhập tay ngày 2026-10-15; khớp tham chiếu Python độc lập",
+    "verified_at": "2026-10-15",
+    "notes": "BH = 30.000.000 × 10,5%. TNTT = 11.350.000. Thuế = 635.000."
+  },
+  {
+    "description": "2026-08 - 50M, no dependents, region 1 (policy from 2026-07-01, checked against TopCV)",
+    "gross": 50000000,
+    "dependents": 0,
+    "region": 1,
+    "date": "2026-08-10",
+    "ins_base": 0,
+    "expected_insurance_total": 5250000,
+    "expected_tax": 2425000,
+    "expected_net": 42325000,
+    "source": "TopCV (topcv.vn/tinh-luong-gross-net, mốc từ 01/07/2026): khớp BH, thuế, net; nhập tay ngày 2026-10-15; khớp tham chiếu Python độc lập",
+    "verified_at": "2026-10-15",
+    "notes": "BH = 50.000.000 × 10,5% (dưới trần BHXH/BHYT 50,6M). TNTT = 29.250.000. Thuế = 2.425.000."
   }
 ]
