@@ -14,6 +14,8 @@ Entries that change computed amounts are marked **(results change)**.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-15
+
 ### Added
 
 - `Options.Extras` for parts of gross that the law treats differently
@@ -97,6 +99,7 @@ First public release.
 - The caller chooses the region; an insurance base below the regional
   minimum wage is not rejected.
 
-[Unreleased]: https://github.com/HuynhNhatKhanh/vnsalary/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/HuynhNhatKhanh/vnsalary/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/HuynhNhatKhanh/vnsalary/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/HuynhNhatKhanh/vnsalary/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/HuynhNhatKhanh/vnsalary/releases/tag/v0.1.0

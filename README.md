@@ -260,7 +260,7 @@ The library is verified with a comprehensive test suite:
 ```bash
 go test -cover ./...
 ```
-Statement coverage at v0.2.0: library **93.2%**, CLI **96.2%**.
+Statement coverage at v0.3.0: library **96.8%**, CLI **96.6%**.
 
 ---
 
