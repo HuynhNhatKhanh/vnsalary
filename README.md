@@ -226,7 +226,7 @@ The library is verified with a comprehensive test suite:
 ```bash
 go test -cover ./...
 ```
-Statement coverage at v0.1.0: library **92.3%**, CLI **96.5%**.
+Statement coverage at v0.2.0: library **93.2%**, CLI **96.2%**.
 
 ---
 
