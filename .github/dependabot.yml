@@ -1,0 +1,13 @@
+version: 2
+updates:
+  # Keep GitHub Actions (checkout, setup-go, golangci-lint-action) up to date.
+  # The library itself has no Go module dependencies to update.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ["*"]
