@@ -14,6 +14,19 @@ Entries that change computed amounts are marked **(results change)**.
 
 ## [Unreleased]
 
+### Added
+
+- `Result.Warnings` (`[]Warning` with `Code` and `Message`, omitted from JSON
+  when empty) for inputs that are computed as given but worth checking.
+  Amounts never change.
+- Warning `WarnInsuranceSalaryBelowRegionalMinimum` when the insurance salary
+  (`InsuranceBase`, or gross) is positive but below the regional minimum wage
+  ([#5](https://github.com/HuynhNhatKhanh/vnsalary/issues/5)). It is a warning,
+  not an error, because part-time contracts can legally be lower and the legal
+  floor of the social insurance salary is the reference level.
+- CLI prints warnings as `[!]` lines in Vietnamese or English; `--json`
+  includes them.
+
 ## [0.1.0] - 2026-10-14
 
 First public release.

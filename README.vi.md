@@ -149,7 +149,7 @@ vnsalary áp dụng cho **người lao động cư trú, hợp đồng lao độ
 
 - **Chưa có thu nhập miễn thuế và tiền thưởng.** Phần lương làm thêm giờ được trả cao hơn, phụ cấp ăn trưa, điện thoại, thưởng tháng 13 hay Tết chưa được tính riêng; chỉ truyền phần lương chịu thuế vào gross.
 - **Chưa hỗ trợ:** quyết toán thuế năm, hợp đồng dưới 3 tháng (khấu trừ 10%), người không cư trú (20%), người nước ngoài (không đóng BHTN).
-- **Không kiểm lương đóng bảo hiểm so với lương tối thiểu vùng.** Luật yêu cầu lương đóng bảo hiểm không thấp hơn mức này, nhưng `InsuranceBase` thấp hơn vẫn được tính bình thường.
+- **Lương đóng bảo hiểm thấp hơn lương tối thiểu vùng vẫn được tính, kèm cảnh báo.** Người làm toàn thời gian phải được trả ít nhất mức này, nên `Result.Warnings` báo mã `insurance_salary_below_regional_minimum` (CLI in dòng `[!]`). Đây không phải lỗi vì hợp đồng bán thời gian có thể thấp hơn hợp pháp.
 - **Tỉ lệ TNLĐ-BNN của công ty cố định 0,5%**, nên BHXH phần công ty luôn là 17,5%. Một số doanh nghiệp đóng 0,3%.
 - **Kinh phí công đoàn 2% không nằm trong `Employer.TotalCost`.** Đây không phải bảo hiểm, nhưng công ty vẫn phải đóng.
 - **Vùng lương tính theo nơi người lao động làm việc**, không theo trụ sở công ty hay nơi ở. Thư viện không tự suy ra vùng; hãy truyền đúng vùng nơi làm việc.

@@ -200,6 +200,7 @@ func printTable(w io.Writer, r vnsalary.Result, lang string) {
 		fmt.Fprintf(w, " Employer Cost: %s (Gross + Employer Insurance %s)\n",
 			formatVND(r.Employer.TotalCost, lang), formatVND(r.Employer.TotalInsurance, lang))
 		fmt.Fprintf(w, " Applied Policy: %s\n", r.Policy.Description)
+		printWarnings(w, r, lang)
 		return
 	}
 
@@ -232,6 +233,26 @@ func printTable(w io.Writer, r vnsalary.Result, lang string) {
 		desc = r.Policy.Description
 	}
 	fmt.Fprintf(w, " Áp dụng: %s\n", desc)
+	printWarnings(w, r, lang)
+}
+
+// warningText holds the localized text of known warning codes; unknown codes
+// fall back to the library's English message.
+var warningText = map[string]map[string]string{
+	vnsalary.WarnInsuranceSalaryBelowRegionalMinimum: {
+		"vi": "Lương đóng bảo hiểm thấp hơn lương tối thiểu vùng (thường do hợp đồng bán thời gian hoặc nhập sai)",
+		"en": "Insurance salary is below the regional minimum wage (usually a part-time contract or an input mistake)",
+	},
+}
+
+func printWarnings(w io.Writer, r vnsalary.Result, lang string) {
+	for _, warn := range r.Warnings {
+		text := warningText[warn.Code][lang]
+		if text == "" {
+			text = warn.Message
+		}
+		fmt.Fprintf(w, " [!] %s\n", text)
+	}
 }
 
 func printDiffTable(w io.Writer, amount int64, dFrom, dTo time.Time, resFrom, resTo vnsalary.Result, dependents, region int, lang string) {
