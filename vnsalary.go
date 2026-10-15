@@ -25,6 +25,34 @@ type Options struct {
 	Dependents    int       // Qualifying dependents count (0..50) (số người phụ thuộc)
 	Region        Region    // Statutory minimum wage region (1..4) (vùng lương tối thiểu)
 	Date          time.Time // Salary payment date; selects the policy in force (cash basis, Law on PIT 109/2025/QH15 Art. 8.3)
+	Extras        Extras    // Parts of gross treated differently from base salary; zero value = none
+}
+
+// Extras are amounts already included in gross (gross is the total paid in the
+// month) that the law treats differently from base salary. The zero value
+// reproduces the calculation of earlier versions.
+//
+// When InsuranceBase is nil, the insurance salary is gross minus Overtime and
+// Bonus: both vary from month to month, so they are outside the salary "paid
+// regularly and stably" (Law on Social Insurance 41/2024/QH15 Art. 31.1.b).
+// MealCash and OtherExempt stay in the insurance salary; set InsuranceBase if
+// the employment contract excludes them.
+type Extras struct {
+	Overtime    VND // Overtime and night-work pay within the legal hour limits; fully tax-exempt from tax period 2026 (pay for hours beyond the limits belongs in gross only)
+	MealCash    VND // Cash meal allowance; tax-exempt up to Policy.MealCashCap
+	OtherExempt VND // Other allowances exempt under the employer's regulation (phone, uniform, travel...); the caller is responsible for their limits
+	Bonus       VND // Bonus paid this month; taxable, outside the insurance salary
+}
+
+func (e Extras) total() VND { return e.Overtime + e.MealCash + e.OtherExempt + e.Bonus }
+
+// ExemptIncome itemizes the parts of gross excluded from taxable income
+// (thu nhập không tính thuế).
+type ExemptIncome struct {
+	Overtime VND `json:"overtime"`
+	Meal     VND `json:"meal"`
+	Other    VND `json:"other"`
+	Total    VND `json:"total"`
 }
 
 // Insurance itemizes mandatory employee contributions.
@@ -79,7 +107,9 @@ type Result struct {
 	Brackets         []BracketLine `json:"brackets"`
 	Employer         EmployerCost  `json:"employer"`
 	Policy           PolicyRef     `json:"policy"`
-	Warnings         []Warning     `json:"warnings,omitempty"` // Inputs computed as given but worth checking; never change amounts
+	Exempt           *ExemptIncome `json:"exempt,omitempty"`    // Exempt parts of gross; set only when Options.Extras is used
+	BonusTax         VND           `json:"bonus_tax,omitempty"` // Tax caused by Extras.Bonus: tax with the bonus minus tax without it
+	Warnings         []Warning     `json:"warnings,omitempty"`  // Inputs computed as given but worth checking; never change amounts
 }
 
 // Warning flags an input that is computed as given but is probably not what
@@ -98,6 +128,24 @@ type Warning struct {
 // reference level (Law on Social Insurance 41/2024/QH15, Art. 31.1), which is
 // lower than the regional minimum.
 const WarnInsuranceSalaryBelowRegionalMinimum = "insurance_salary_below_regional_minimum"
+
+// Warning codes for Options.Extras.
+const (
+	// WarnOvertimeTaxedBeforeExemption: before tax period 2026 only the part of
+	// overtime pay above normal-hours pay was exempt (Circular 111/2013/TT-BTC
+	// Art. 3.1.i). The library cannot split Extras.Overtime, so it taxes all of
+	// it; put the exempt part in Extras.OtherExempt instead.
+	WarnOvertimeTaxedBeforeExemption = "overtime_taxed_before_2026"
+
+	// WarnMealCapUnverified: the meal allowance cap for this payment date could
+	// not be confirmed from a legal text; the policy's cap is applied.
+	WarnMealCapUnverified = "meal_cap_unverified"
+
+	// WarnInsuranceSalaryIncludesAllowances: InsuranceBase is nil, so MealCash
+	// and OtherExempt are included in the insurance salary. Set InsuranceBase if
+	// the employment contract excludes them.
+	WarnInsuranceSalaryIncludesAllowances = "insurance_salary_includes_allowances"
+)
 
 func minVND(a, b VND) VND {
 	if a < b {
@@ -135,16 +183,43 @@ func GrossToNet(gross VND, opts Options) (Result, error) {
 // computeNet stays free of both, because NetToGross calls it many times.
 func finalize(policy *Policy, res Result, opts Options) Result {
 	res.Policy = res.Policy.clone()
+	ex := opts.Extras
 
-	insSalary := res.Gross
-	if opts.InsuranceBase != nil {
-		insSalary = *opts.InsuranceBase
+	if ex != (Extras{}) {
+		exempt := exemptIncome(policy, ex)
+		res.Exempt = &exempt
 	}
+	if ex.Bonus > 0 {
+		// The bonus is outside the insurance salary, so only taxable income changes.
+		without := res.TaxableIncome - ex.Bonus - res.Insurance.Total - res.Deductions.Total
+		taxWithout, _ := progressiveTax(policy, max(without, 0))
+		res.BonusTax = res.Tax - taxWithout
+	}
+
+	insSalary := insuranceSalary(res.Gross, opts)
 	if regionalMin := policy.RegionalMinSalary(opts.Region); insSalary > 0 && insSalary < regionalMin {
 		res.Warnings = append(res.Warnings, Warning{
 			Code: WarnInsuranceSalaryBelowRegionalMinimum,
 			Message: fmt.Sprintf("insurance salary %d VND is below the regional minimum wage %d VND for region %d",
 				insSalary, regionalMin, opts.Region),
+		})
+	}
+	if ex.Overtime > 0 && !policy.OvertimeFullyExempt {
+		res.Warnings = append(res.Warnings, Warning{
+			Code:    WarnOvertimeTaxedBeforeExemption,
+			Message: "before tax period 2026 only overtime pay above normal-hours pay is exempt; all of Extras.Overtime is taxed, put the exempt part in Extras.OtherExempt",
+		})
+	}
+	if ex.MealCash > 0 && !policy.MealCashCapVerified {
+		res.Warnings = append(res.Warnings, Warning{
+			Code:    WarnMealCapUnverified,
+			Message: fmt.Sprintf("meal allowance cap %d VND for this payment date is not confirmed by a legal text", policy.MealCashCap),
+		})
+	}
+	if opts.InsuranceBase == nil && (ex.MealCash > 0 || ex.OtherExempt > 0) {
+		res.Warnings = append(res.Warnings, Warning{
+			Code:    WarnInsuranceSalaryIncludesAllowances,
+			Message: "insurance salary includes MealCash and OtherExempt; set InsuranceBase if the employment contract excludes them",
 		})
 	}
 	return res
@@ -166,18 +241,76 @@ func validateOptions(opts Options) error {
 			return ErrAmountTooLarge
 		}
 	}
+	for _, v := range []VND{opts.Extras.Overtime, opts.Extras.MealCash, opts.Extras.OtherExempt, opts.Extras.Bonus} {
+		if v < 0 {
+			return ErrInvalidAmount
+		}
+		if v > MaxGross {
+			return ErrAmountTooLarge
+		}
+	}
 	return nil
+}
+
+// exemptIncome returns the parts of opts.Extras excluded from taxable income
+// under the policy.
+func exemptIncome(policy *Policy, ex Extras) ExemptIncome {
+	var e ExemptIncome
+	if policy.OvertimeFullyExempt {
+		e.Overtime = ex.Overtime
+	}
+	e.Meal = minVND(ex.MealCash, policy.MealCashCap)
+	e.Other = ex.OtherExempt
+	e.Total = e.Overtime + e.Meal + e.Other
+	return e
+}
+
+// insuranceSalary returns the salary insurance contributions are based on.
+func insuranceSalary(gross VND, opts Options) VND {
+	if opts.InsuranceBase != nil {
+		return *opts.InsuranceBase
+	}
+	return gross - opts.Extras.Overtime - opts.Extras.Bonus
+}
+
+// progressiveTax applies the policy's progressive schedule to assessable
+// income, rounding each bracket half-up to 1 VND.
+func progressiveTax(policy *Policy, assessable VND) (VND, []BracketLine) {
+	var total VND
+	var lines []BracketLine
+	rem := assessable
+	var prevLimit VND
+	for i, b := range policy.Brackets {
+		if rem <= 0 {
+			break
+		}
+		part := minVND(rem, b.Limit-prevLimit)
+		if part > 0 {
+			tax := roundDiv(int64(part)*b.RateNumerator, b.RateDenom)
+			total += tax
+			lines = append(lines, BracketLine{
+				Bracket:     i + 1,
+				TaxablePart: part,
+				RatePercent: int(b.RateNumerator * 100 / b.RateDenom),
+				Tax:         tax,
+			})
+			rem -= part
+		}
+		prevLimit = b.Limit
+	}
+	return total, lines
 }
 
 // computeNet evaluates the pure calculation logic of GrossToNet: no validation, no policy cloning.
 // Callers must have pre-validated gross and opts. Result.Policy.Sources references shared data,
 // so public exported functions must clone it before returning.
 func computeNet(policy *Policy, gross VND, opts Options) (Result, error) {
-	// 1. Determine base salary for mandatory insurance contributions
-	insSalary := gross
-	if opts.InsuranceBase != nil {
-		insSalary = *opts.InsuranceBase
+	if opts.Extras.total() > gross {
+		return Result{}, ErrExtrasExceedGross
 	}
+
+	// 1. Determine base salary for mandatory insurance contributions
+	insSalary := insuranceSalary(gross, opts)
 
 	// 2. Mandatory employee insurance (Bảo hiểm người lao động)
 	baseSH := minVND(insSalary, policy.MaxSocialHealthSalary)
@@ -205,43 +338,14 @@ func computeNet(policy *Policy, gross VND, opts Options) (Result, error) {
 	totalDeductions := personalDeduction + dependentDeduction
 
 	// 5. Taxable and assessable income (Thu nhập chịu thuế & Thu nhập tính thuế)
-	taxableIncome := gross // v1: exempt allowances not yet incorporated
+	taxableIncome := gross - exemptIncome(policy, opts.Extras).Total
 	assessableIncome := taxableIncome - totalEmpInsurance - totalDeductions
 	if assessableIncome < 0 {
 		assessableIncome = 0
 	}
 
 	// 6. Progressive personal income tax calculation (Thuế TNCN lũy tiến từng phần)
-	var totalTax VND
-	var brackets []BracketLine
-	remAssessable := assessableIncome
-	var prevLimit VND = 0
-
-	for i, b := range policy.Brackets {
-		if remAssessable <= 0 {
-			break
-		}
-
-		span := b.Limit - prevLimit
-		taxableInBracket := minVND(remAssessable, span)
-
-		if taxableInBracket > 0 {
-			ratePercent := int(b.RateNumerator * 100 / b.RateDenom)
-			bracketTax := roundDiv(int64(taxableInBracket)*b.RateNumerator, b.RateDenom)
-			totalTax += bracketTax
-
-			brackets = append(brackets, BracketLine{
-				Bracket:     i + 1,
-				TaxablePart: taxableInBracket,
-				RatePercent: ratePercent,
-				Tax:         bracketTax,
-			})
-
-			remAssessable -= taxableInBracket
-		}
-
-		prevLimit = b.Limit
-	}
+	totalTax, brackets := progressiveTax(policy, assessableIncome)
 
 	// 7. Net take-home pay (Lương Net thực nhận)
 	net := gross - totalEmpInsurance - totalTax

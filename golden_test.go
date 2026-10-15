@@ -20,12 +20,18 @@ type goldenCase struct {
 	Region                 int    `json:"region"`
 	Date                   string `json:"date"`
 	InsBase                int64  `json:"ins_base"`
+	Overtime               int64  `json:"overtime"`
+	MealCash               int64  `json:"meal_cash"`
+	OtherExempt            int64  `json:"other_exempt"`
+	Bonus                  int64  `json:"bonus"`
 	ExpectedSocial         *int64 `json:"expected_social"`
 	ExpectedHealth         *int64 `json:"expected_health"`
 	ExpectedUnemployment   *int64 `json:"expected_unemployment"`
 	ExpectedInsuranceTotal int64  `json:"expected_insurance_total"`
 	ExpectedTax            int64  `json:"expected_tax"`
 	ExpectedNet            int64  `json:"expected_net"`
+	ExpectedExemptTotal    *int64 `json:"expected_exempt_total"`
+	ExpectedBonusTax       *int64 `json:"expected_bonus_tax"`
 	Source                 string `json:"source"`
 	VerifiedAt             string `json:"verified_at"`
 }
@@ -55,6 +61,12 @@ func TestGoldenData(t *testing.T) {
 				Dependents: tc.Dependents,
 				Region:     vnsalary.Region(tc.Region),
 				Date:       date,
+				Extras: vnsalary.Extras{
+					Overtime:    vnsalary.VND(tc.Overtime),
+					MealCash:    vnsalary.VND(tc.MealCash),
+					OtherExempt: vnsalary.VND(tc.OtherExempt),
+					Bonus:       vnsalary.VND(tc.Bonus),
+				},
 			}
 			if tc.InsBase > 0 {
 				insBase := vnsalary.VND(tc.InsBase)
@@ -79,6 +91,16 @@ func TestGoldenData(t *testing.T) {
 			if int64(res.Net) != tc.ExpectedNet {
 				t.Errorf("Net mismatch: got %d, want %d", res.Net, tc.ExpectedNet)
 			}
+			if tc.ExpectedExemptTotal != nil {
+				var got int64
+				if res.Exempt != nil {
+					got = int64(res.Exempt.Total)
+				}
+				if got != *tc.ExpectedExemptTotal {
+					t.Errorf("Exempt total mismatch: got %d, want %d", got, *tc.ExpectedExemptTotal)
+				}
+			}
+			checkOptional(t, "BonusTax", res.BonusTax, tc.ExpectedBonusTax)
 
 			// Reverse calculation: Net -> Gross returns the smallest gross with
 			// the same net, which is the case gross itself or a few VND below it.

@@ -35,6 +35,7 @@ disagreed between sources. A parameter set with citations is useful in itself.
 | Employer cost | BHXH 17.5% (incl. 0.5% occupational accident), BHYT 3%, BHTN 1% |
 | Policy by date | `Options.Date` selects the parameter set |
 | CLI | `gross`, `net`, `diff`, `--json`, `--lang vi\|en` |
+| Extras (v0.3.0) | overtime, cash meal allowance, other exempt allowances and bonus inside gross; exempt income, insurance salary and the tax caused by the bonus |
 
 **Later:** see the roadmap (§12). Known simplifications of v0.1.0 are listed
 in §11.
@@ -116,16 +117,24 @@ policy is in `policies.go` and the README.
 ## 5. Gross → Net
 
 1. Select the policy by date.
-2. Insurance salary = `InsuranceBase` or gross. Social and health use
+2. Insurance salary = `InsuranceBase`, or gross − `Extras.Overtime` −
+   `Extras.Bonus` (both vary month to month, so they are outside the salary
+   "paid regularly and stably", Law 41/2024 Art. 31.1.b). Social and health use
    `min(salary, 20 × base salary)`; unemployment uses
    `min(salary, 20 × regional minimum)`.
 3. Each insurance item = rate × capped salary, **rounded half-up to 1 VND**.
    If the total exceeds gross (possible only with a fixed `InsuranceBase`),
    return `ErrInsuranceExceedsGross` instead of a negative net.
-4. Assessable income = max(0, gross − insurance − deductions).
+4. Taxable income = gross − exempt income, where exempt income is overtime
+   (from tax period 2026, Law 109/2025 Art. 4.8) + min(meal cash, policy cap)
+   + other exempt allowances. Assessable income = max(0, taxable income −
+   insurance − deductions).
 5. Tax = Σ over brackets of rate × part of assessable income in the bracket,
    each **rounded half-up to 1 VND**.
 6. Net = gross − insurance − tax. Employer items are computed the same way.
+7. With a bonus, `BonusTax` = tax − tax on (assessable income without the
+   bonus). The bonus does not change insurance, so this is exactly the tax the
+   bonus adds in that month.
 
 ## 6. Rounding convention
 
@@ -175,7 +184,10 @@ insurance makes it fail). A future rate change must pass this test.
 
 1. Compute the breakpoints (gross, net) for the policy and options. With a
    fixed `InsuranceBase`, insurance is constant and only the tax breakpoints
-   remain.
+   remain. Extras are held fixed: the lowest valid gross is their sum, the
+   insurance caps move up by overtime + bonus, and the tax thresholds move by
+   the exempt income. The insurance salary still grows 1 VND per VND of gross,
+   so the step property above holds (`TestNetSteps_ZeroOrOne` includes extras).
 2. Find the segment containing the target net and interpolate the gross with
    integer arithmetic. Above the last breakpoint the slope is 65% (insurance
    capped, top rate 35%).
@@ -190,7 +202,7 @@ interval (a few VND wide), so step 5 always ends at its smallest element:
 the result is minimal by construction, not only within the scan window.
 `TestNetToGross_RoundTripProperty`, the golden tests (the gross 1 VND below
 the result gives a smaller net) and fuzzing check it. The window keeps the
-common case at roughly 15–20 µs on the author's machine.
+common case at roughly 13 µs on the author's machine.
 
 The breakpoint estimates assume the social/health cap is below the
 unemployment cap in every region (50.6M vs. at least 74M today);
@@ -251,6 +263,11 @@ and a real test of how pleasant the API is.
 | 2026-10-13 | English godoc and comments, Vietnamese legal names | pkg.go.dev audience; legal names are not translated |
 | 2026-10-13 | CLI defaults to Vietnamese, `--lang en` | primary users read Vietnamese |
 | 2026-10-13 | Versioning: law or result change → MINOR | users can pin a minor version for stable numbers |
+| 2026-10-15 | Gross is the total paid in the month; `Extras` itemize parts of it ([#3](https://github.com/HuynhNhatKhanh/vnsalary/issues/3), [#4](https://github.com/HuynhNhatKhanh/vnsalary/issues/4)) | one number users already know (the payslip total); `Extras` exceeding gross is an error |
+| 2026-10-15 | Default insurance salary excludes overtime and bonus only | the only parts with a clear legal basis (not regular and stable); meal and other allowances depend on the contract, so a warning points to `InsuranceBase` |
+| 2026-10-15 | Overtime before 2026 is taxed with a warning, not an error | before 2026 only the premium over normal pay was exempt and the library cannot split it; callers put the exempt part in `OtherExempt` |
+| 2026-10-15 | Meal cap 730,000 before 2026-07-01, flagged unverified | the reference circular was repealed and no replacement figure was found; computing with a warning beats rejecting historical payrolls |
+| 2026-10-15 | `Result.Exempt` is a pointer, `BonusTax` omitempty | JSON stays identical to v0.2.0 when no extras are given |
 | 2026-10-15 | Insurance salary below the regional minimum is a warning, not an error ([#5](https://github.com/HuynhNhatKhanh/vnsalary/issues/5)) | the legal floor of the social insurance salary is the reference level (Law 41/2024/QH15 Art. 31.1); the regional minimum binds full-time pay (Labour Code 2019 Art. 90.2), so part-time contracts can legally be lower. Warnings never change amounts |
 
 ## 11. Known gaps
@@ -287,13 +304,20 @@ outside these milestones.
 
 - **Insurance month vs. payment date.** §4 uses one date for both. If users
   need it, `Options` could take a separate insurance month.
+- **Meal allowance cap from 2026-01-01 to 2026-06-30.** Decree 253/2026 sets
+  1,200,000 from 2026-07-01; the earlier 730,000 reference (Circular 26/2016)
+  was repealed and no replacement was found. The library applies 730,000 with
+  a warning.
+- **Overtime beyond the legal hour limits** is taxable (Decree 253/2026
+  Art. 26.3). How the excess is measured (monthly vs. yearly limits) is not
+  settled in the sources found; the library leaves it to the caller.
 - **Amending law 09/2026/QH16** (April 2026) changes the PIT revenue threshold
   for business income; whether it touches Articles 9–10 of Law 109/2025 (salary
   brackets and deductions) has not been confirmed from the full text.
 
 ## 14. Legal sources checked
 
-Checked against the full texts or official publications on 2026-10-13:
+Checked against the full texts or official publications on 2026-10-13; the rows on overtime, allowances, bonuses and the insurance salary on 2026-10-15.
 
 | Fact | Source |
 |---|---|
@@ -307,3 +331,8 @@ Checked against the full texts or official publications on 2026-10-13:
 | 5 brackets for salaries from tax period 2026 | Law 109/2025/QH15 Art. 9.2 and Art. 29.2 |
 | Taxable income at payment time | Law 109/2025/QH15 Art. 8.3; Circular 111/2013 Art. 8.2.b (replaced by Circular 87/2026/TT-BTC) |
 | No legal rule on rounding insurance or PIT to the đồng | none found; see §6 |
+| Overtime and night-work pay fully exempt from tax period 2026 (within legal limits) | Law 109/2025/QH15 Art. 4.8; Decree 253/2026/NĐ-CP Art. 26, Art. 69.1 |
+| Cash meal allowance taxable only above 1,200,000/month from 2026-07-01 | Decree 253/2026/NĐ-CP Art. 8.2.g, Art. 69.1.b |
+| Phone, uniform and similar allowances taxable only above the CIT-deductible level | Decree 253/2026/NĐ-CP Art. 8.2.đ |
+| Bonuses taxable in the month paid, progressive withholding | Decree 253/2026/NĐ-CP Art. 8.2.i, 46.3, 50.1–2 |
+| Insurance salary = wage + allowances + regular, stable additions | Law 41/2024/QH15 Art. 31.1.b; Decree 158/2025/NĐ-CP Art. 7.1 |

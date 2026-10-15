@@ -29,6 +29,10 @@ var (
 	// ErrDateZero indicates that a zero time value was provided for the payment date.
 	ErrDateZero = errors.New("vnsalary: date cannot be zero")
 
+	// ErrExtrasExceedGross indicates that Options.Extras add up to more than gross;
+	// gross is the total paid in the month and must include them.
+	ErrExtrasExceedGross = errors.New("vnsalary: extras exceed gross (gross must include them)")
+
 	// ErrInsuranceExceedsGross indicates that the mandatory employee insurance contribution exceeds the gross salary.
 	ErrInsuranceExceedsGross = errors.New("vnsalary: insurance contribution exceeds gross salary")
 

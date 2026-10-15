@@ -8,7 +8,8 @@
 //	vnsalary diff <amount> [flags]    compare net between two payment dates
 //
 // Flags: -d/--dependents, -r/--region (1..4), --date YYYY-MM-DD (payment date,
-// default today), --from/--to (for diff), --ins-base, --json, --lang vi|en.
+// default today), --from/--to (for diff), --ins-base, --overtime, --meal,
+// --other-exempt, --bonus, --json, --lang vi|en.
 //
 // Exit codes: 0 success, 1 calculation error, 2 usage error.
 package main
@@ -71,6 +72,10 @@ Flags:
       --from string         Kỳ trước cho lệnh diff (mặc định: ` + defaultDiffFrom + `)
       --to string           Kỳ sau cho lệnh diff (mặc định: ` + defaultDiffTo + `)
       --ins-base int        Mức lương đóng bảo hiểm cố định (tùy chọn)
+      --overtime int        Tiền làm thêm giờ, làm đêm nằm trong số tiền (miễn thuế từ 2026)
+      --meal int            Tiền ăn giữa ca bằng tiền nằm trong số tiền (miễn thuế tới mức trần)
+      --other-exempt int    Phụ cấp miễn thuế khác theo quy chế công ty (điện thoại, trang phục…)
+      --bonus int           Tiền thưởng trong tháng nằm trong số tiền (chịu thuế, không đóng BH)
       --lang string         Ngôn ngữ hiển thị: vi, en (mặc định: vi)
       --json                Xuất kết quả dạng JSON`,
 		errFlags:      "Lỗi phân tích cờ: %v",
@@ -98,6 +103,10 @@ Flags:
       --from string         Earlier period for diff (default: ` + defaultDiffFrom + `)
       --to string           Later period for diff (default: ` + defaultDiffTo + `)
       --ins-base int        Fixed insurance contribution salary (optional)
+      --overtime int        Overtime and night-work pay included in the amount (tax-exempt from 2026)
+      --meal int            Cash meal allowance included in the amount (tax-exempt up to the cap)
+      --other-exempt int    Other allowances exempt under the employer's regulation (phone, uniform...)
+      --bonus int           Bonus paid this month, included in the amount (taxed, no insurance)
       --lang string         Display language: vi, en (default: vi)
       --json                Print the result as JSON`,
 		errFlags:      "Error parsing flags: %v",
@@ -184,6 +193,13 @@ func printTable(w io.Writer, r vnsalary.Result, lang string) {
 		fmt.Fprintf(w, "  • Health Insurance (BHYT 1.5%%):     %s\n", formatVND(r.Insurance.Health, lang))
 		fmt.Fprintf(w, "  • Unemployment (BHTN 1%%):           %s\n", formatVND(r.Insurance.Unemployment, lang))
 		fmt.Fprintln(w, "-----------------------------------------------------------------")
+		if r.Exempt != nil {
+			fmt.Fprintf(w, " [Tax-Exempt Income: %s]\n", formatVND(r.Exempt.Total, lang))
+			fmt.Fprintf(w, "  • Overtime:                          %s\n", formatVND(r.Exempt.Overtime, lang))
+			fmt.Fprintf(w, "  • Meal allowance:                    %s\n", formatVND(r.Exempt.Meal, lang))
+			fmt.Fprintf(w, "  • Other allowances:                  %s\n", formatVND(r.Exempt.Other, lang))
+			fmt.Fprintln(w, "-----------------------------------------------------------------")
+		}
 		fmt.Fprintf(w, " [Tax Deductions: %s]\n", formatVND(r.Deductions.Total, lang))
 		fmt.Fprintf(w, "  • Personal:                          %s\n", formatVND(r.Deductions.Personal, lang))
 		fmt.Fprintf(w, "  • Dependents:                        %s\n", formatVND(r.Deductions.Dependents, lang))
@@ -193,6 +209,9 @@ func printTable(w io.Writer, r vnsalary.Result, lang string) {
 		for _, b := range r.Brackets {
 			fmt.Fprintf(w, "  • Bracket %d (%d%% on %s): %s\n",
 				b.Bracket, b.RatePercent, formatVND(b.TaxablePart, lang), formatVND(b.Tax, lang))
+		}
+		if r.BonusTax > 0 {
+			fmt.Fprintf(w, "  • Of which caused by the bonus:      %s\n", formatVND(r.BonusTax, lang))
 		}
 		fmt.Fprintln(w, "=================================================================")
 		fmt.Fprintf(w, " NET TAKE-HOME PAY: %s\n", formatVND(r.Net, lang))
@@ -213,6 +232,13 @@ func printTable(w io.Writer, r vnsalary.Result, lang string) {
 	fmt.Fprintf(w, "  • BHYT (1.5%%):     %s\n", formatVND(r.Insurance.Health, lang))
 	fmt.Fprintf(w, "  • BHTN (1%%):       %s\n", formatVND(r.Insurance.Unemployment, lang))
 	fmt.Fprintln(w, "-----------------------------------------------------------------")
+	if r.Exempt != nil {
+		fmt.Fprintf(w, " [Thu nhập miễn thuế: %s]\n", formatVND(r.Exempt.Total, lang))
+		fmt.Fprintf(w, "  • Làm thêm giờ:    %s\n", formatVND(r.Exempt.Overtime, lang))
+		fmt.Fprintf(w, "  • Tiền ăn giữa ca: %s\n", formatVND(r.Exempt.Meal, lang))
+		fmt.Fprintf(w, "  • Phụ cấp khác:    %s\n", formatVND(r.Exempt.Other, lang))
+		fmt.Fprintln(w, "-----------------------------------------------------------------")
+	}
 	fmt.Fprintf(w, " [Giảm trừ gia cảnh: %s]\n", formatVND(r.Deductions.Total, lang))
 	fmt.Fprintf(w, "  • Bản thân:        %s\n", formatVND(r.Deductions.Personal, lang))
 	fmt.Fprintf(w, "  • Người phụ thuộc: %s\n", formatVND(r.Deductions.Dependents, lang))
@@ -222,6 +248,9 @@ func printTable(w io.Writer, r vnsalary.Result, lang string) {
 	for _, b := range r.Brackets {
 		fmt.Fprintf(w, "  • Bậc %d (%d%% trên %s): %s\n",
 			b.Bracket, b.RatePercent, formatVND(b.TaxablePart, lang), formatVND(b.Tax, lang))
+	}
+	if r.BonusTax > 0 {
+		fmt.Fprintf(w, "  • Trong đó do khoản thưởng: %s\n", formatVND(r.BonusTax, lang))
 	}
 	fmt.Fprintln(w, "=================================================================")
 	fmt.Fprintf(w, " LƯƠNG NET THỰC NHẬN: %s\n", formatVND(r.Net, lang))
@@ -242,6 +271,18 @@ var warningText = map[string]map[string]string{
 	vnsalary.WarnInsuranceSalaryBelowRegionalMinimum: {
 		"vi": "Lương đóng bảo hiểm thấp hơn lương tối thiểu vùng (thường do hợp đồng bán thời gian hoặc nhập sai)",
 		"en": "Insurance salary is below the regional minimum wage (usually a part-time contract or an input mistake)",
+	},
+	vnsalary.WarnOvertimeTaxedBeforeExemption: {
+		"vi": "Trước năm 2026 chỉ phần lương làm thêm giờ cao hơn giờ thường được miễn thuế; đang tính thuế toàn bộ --overtime, hãy đưa phần được miễn vào --other-exempt",
+		"en": "Before 2026 only overtime pay above normal-hours pay is exempt; all of --overtime is taxed, put the exempt part in --other-exempt",
+	},
+	vnsalary.WarnMealCapUnverified: {
+		"vi": "Mức trần tiền ăn giữa ca cho ngày chi trả này chưa được xác nhận bằng văn bản luật",
+		"en": "The meal allowance cap for this payment date is not confirmed by a legal text",
+	},
+	vnsalary.WarnInsuranceSalaryIncludesAllowances: {
+		"vi": "Lương đóng bảo hiểm đang gồm cả --meal và --other-exempt; dùng --ins-base nếu hợp đồng không tính chúng",
+		"en": "Insurance salary includes --meal and --other-exempt; use --ins-base if the contract excludes them",
 	},
 }
 
@@ -356,6 +397,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 	fromStr := flags.String("from", defaultDiffFrom, "")
 	toStr := flags.String("to", defaultDiffTo, "")
 	insBaseFlag := flags.Int64("ins-base", 0, "")
+	overtime := flags.Int64("overtime", 0, "")
+	meal := flags.Int64("meal", 0, "")
+	otherExempt := flags.Int64("other-exempt", 0, "")
+	bonus := flags.Int64("bonus", 0, "")
 	flags.String("lang", "vi", "") // already read by detectLang
 	asJSON := flags.Bool("json", false, "")
 
@@ -367,6 +412,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 		"-from": true, "--from": true,
 		"-to": true, "--to": true,
 		"-ins-base": true, "--ins-base": true,
+		"-overtime": true, "--overtime": true,
+		"-meal": true, "--meal": true,
+		"-other-exempt": true, "--other-exempt": true,
+		"-bonus": true, "--bonus": true,
 		"-lang": true, "--lang": true,
 	}
 	rawArgs := args[1:]
@@ -420,6 +469,12 @@ func run(args []string, stdout, stderr io.Writer) int {
 			Dependents:    *dependents,
 			Region:        vnsalary.Region(*region),
 			Date:          d,
+			Extras: vnsalary.Extras{
+				Overtime:    vnsalary.VND(*overtime),
+				MealCash:    vnsalary.VND(*meal),
+				OtherExempt: vnsalary.VND(*otherExempt),
+				Bonus:       vnsalary.VND(*bonus),
+			},
 		}
 	}
 	if cmd == "diff" {

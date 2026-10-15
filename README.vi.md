@@ -98,6 +98,33 @@ opts := vnsalary.Options{
 result, err := vnsalary.GrossToNet(30_000_000, opts)
 ```
 
+### 4. Làm Thêm Giờ, Phụ Cấp và Tiền Thưởng
+
+Gross là **tổng số tiền chi trả trong tháng**. Dùng `Options.Extras` để cho thư viện biết phần nào trong đó là làm thêm giờ, phụ cấp hay tiền thưởng:
+
+```go
+opts := vnsalary.Options{
+	Region: vnsalary.Region1,
+	Date:   time.Date(2026, 8, 10, 0, 0, 0, 0, time.UTC),
+	Extras: vnsalary.Extras{
+		Overtime: 5_000_000,  // miễn thuế từ 2026, không tính vào lương đóng BH
+		MealCash: 1_500_000,  // miễn thuế tới 1.200.000đ/tháng từ 01/07/2026
+		Bonus:    10_000_000, // chịu thuế trong tháng chi trả, không tính vào lương đóng BH
+	},
+}
+result, _ := vnsalary.GrossToNet(55_000_000, opts) // 55M đã gồm các khoản trên
+fmt.Println(result.Exempt.Total, result.BonusTax)   // phần được miễn; thuế phát sinh do khoản thưởng
+```
+
+| Khoản | Thuế TNCN | Lương đóng BH (khi không truyền `InsuranceBase`) | Căn cứ |
+| :--- | :--- | :--- | :--- |
+| `Overtime` (trong giới hạn giờ luật cho phép) | miễn từ kỳ tính thuế 2026; trước 2026 tính thuế, kèm cảnh báo | không tính | Luật 109/2025 Điều 4.8, NĐ 253/2026 Điều 26 |
+| `MealCash` | miễn tới 1.200.000đ/tháng từ 01/07/2026; trước đó 730.000đ, kèm cảnh báo (chưa xác nhận) | có tính | NĐ 253/2026 Điều 8.2.g |
+| `OtherExempt` (điện thoại, trang phục…) | miễn; mức do người dùng tự chịu trách nhiệm | có tính | NĐ 253/2026 Điều 8.2.đ |
+| `Bonus` | chịu thuế trong tháng chi trả; `Result.BonusTax` = thuế khi có thưởng − thuế khi không có | không tính | NĐ 253/2026 Điều 8.2.i, 46.3 |
+
+Làm thêm giờ và tiền thưởng thay đổi theo từng tháng, nên không thuộc khoản "trả thường xuyên, ổn định" làm căn cứ đóng bảo hiểm (Luật 41/2024 Điều 31.1.b). Nếu hợp đồng cũng không tính tiền ăn hay phụ cấp khác vào lương đóng BH, hãy truyền `InsuranceBase`. `NetToGross` giữ nguyên các khoản Extras và trả về tổng gross nhỏ nhất.
+
 ---
 
 ## 📊 Bảng Căn Cứ Pháp Lý (2024 vs 2026)
@@ -145,9 +172,9 @@ Văn bản luật quy định tỉ lệ và mức trần nhưng không quy đị
 
 ## ⚠️ Giới Hạn
 
-vnsalary áp dụng cho **người lao động cư trú, hợp đồng lao động từ 3 tháng trở lên**, toàn bộ lương gross là thu nhập chịu thuế. Hãy đọc các điểm sau trước khi dùng cho bảng lương thật:
+vnsalary áp dụng cho **người lao động cư trú, hợp đồng lao động từ 3 tháng trở lên**. Hãy đọc các điểm sau trước khi dùng cho bảng lương thật:
 
-- **Chưa có thu nhập miễn thuế và tiền thưởng.** Phần lương làm thêm giờ được trả cao hơn, phụ cấp ăn trưa, điện thoại, thưởng tháng 13 hay Tết chưa được tính riêng; chỉ truyền phần lương chịu thuế vào gross.
+- **Các khoản miễn thuế được nhận như người dùng truyền vào.** `Extras.Overtime` phải là tiền làm thêm trong giới hạn giờ luật cho phép (phần vượt giới hạn chỉ để trong gross), và mức của `Extras.OtherExempt` (điện thoại, trang phục…) theo quy chế công ty; thư viện không kiểm các mức này.
 - **Chưa hỗ trợ:** quyết toán thuế năm, hợp đồng dưới 3 tháng (khấu trừ 10%), người không cư trú (20%), người nước ngoài (không đóng BHTN).
 - **Lương đóng bảo hiểm thấp hơn lương tối thiểu vùng vẫn được tính, kèm cảnh báo.** Người làm toàn thời gian phải được trả ít nhất mức này, nên `Result.Warnings` báo mã `insurance_salary_below_regional_minimum` (CLI in dòng `[!]`). Đây không phải lỗi vì hợp đồng bán thời gian có thể thấp hơn hợp pháp.
 - **Tỉ lệ TNLĐ-BNN của công ty cố định 0,5%**, nên BHXH phần công ty luôn là 17,5%. Một số doanh nghiệp đóng 0,3%.
@@ -187,6 +214,13 @@ vnsalary diff 35000000 -d 1 -r 1                                   # mặc đị
 vnsalary diff 60000000 --from 2026-06-30 --to 2026-07-01           # hai ngày chi trả bất kỳ
 ```
 
+#### Làm thêm giờ, phụ cấp và tiền thưởng
+Số tiền là tổng chi trả trong tháng; các cờ cho biết phần nào là khoản đặc biệt:
+```bash
+vnsalary gross 50000000 --bonus 20000000 --date 2026-08-10        # hiện phần thuế do khoản thưởng
+vnsalary gross 55000000 --overtime 5000000 --meal 1500000 --other-exempt 800000 --date 2026-08-10
+```
+
 #### 4. Chọn Ngôn Ngữ Hiển Thị
 Giao diện mặc định là tiếng Việt. `--lang en` chuyển toàn bộ CLI sang tiếng Anh (hướng dẫn, thông báo lỗi, bảng kết quả, số tiền dạng `35,000,000 VND`). Kết quả `--json` không phụ thuộc ngôn ngữ:
 ```bash
@@ -205,8 +239,8 @@ vnsalary gross 35000000 --json
 
 Ví dụ một lần chạy (`go test -bench=. -benchmem`, linux/amd64, Intel i7-10700K; số đo khác nhau tùy máy và tùy lần chạy):
 ```text
-BenchmarkGrossToNet-16      3694824           325.3 ns/op         320 B/op          4 allocs/op
-BenchmarkNetToGross-16       108325         18020   ns/op       14864 B/op        194 allocs/op
+BenchmarkGrossToNet-16      3850897           329.0 ns/op         336 B/op          3 allocs/op
+BenchmarkNetToGross-16       111998         12749   ns/op       12920 B/op        133 allocs/op
 ```
 
 - `GrossToNet` dưới 1 µs; allocation đến từ danh sách bậc thuế và bản sao nguồn văn bản trong kết quả.
