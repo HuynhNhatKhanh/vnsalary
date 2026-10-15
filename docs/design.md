@@ -251,14 +251,13 @@ and a real test of how pleasant the API is.
 | 2026-10-13 | English godoc and comments, Vietnamese legal names | pkg.go.dev audience; legal names are not translated |
 | 2026-10-13 | CLI defaults to Vietnamese, `--lang en` | primary users read Vietnamese |
 | 2026-10-13 | Versioning: law or result change → MINOR | users can pin a minor version for stable numbers |
+| 2026-10-15 | Insurance salary below the regional minimum is a warning, not an error ([#5](https://github.com/HuynhNhatKhanh/vnsalary/issues/5)) | the legal floor of the social insurance salary is the reference level (Law 41/2024/QH15 Art. 31.1); the regional minimum binds full-time pay (Labour Code 2019 Art. 90.2), so part-time contracts can legally be lower. Warnings never change amounts |
 
 ## 11. Known gaps
 
 Simplifications in v0.1.0 that affect real payrolls are listed under
 "Limitations" in the README. Those with a planned fix are tracked as issues:
-insurance base below the regional minimum wage
-([#5](https://github.com/HuynhNhatKhanh/vnsalary/issues/5)), configurable
-employer accident insurance rate
+configurable employer accident insurance rate
 ([#10](https://github.com/HuynhNhatKhanh/vnsalary/issues/10)) and the optional
 trade union fee ([#11](https://github.com/HuynhNhatKhanh/vnsalary/issues/11)).
 The region is the place of work; that is a documentation point, not a gap in

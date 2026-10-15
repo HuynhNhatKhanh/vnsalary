@@ -147,8 +147,7 @@ func NetToGross(net VND, opts Options) (Result, error) {
 		if err != nil {
 			return Result{}, err
 		}
-		res.Policy = res.Policy.clone()
-		return res, nil
+		return finalize(policy, res, opts), nil
 	}
 
 	if net == 0 {

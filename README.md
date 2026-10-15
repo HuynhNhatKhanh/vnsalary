@@ -147,7 +147,7 @@ vnsalary covers **resident employees on labour contracts of 3 months or more**, 
 
 - **No tax-exempt income or bonuses yet.** Overtime premium, meal and phone allowances, and 13th-month or Tết bonuses are not modelled; pass only the taxable salary as gross.
 - **Not covered:** annual PIT finalization, contracts under 3 months (10% withholding), non-residents (20%), foreign employees (no unemployment insurance).
-- **Insurance base is not checked against the regional minimum wage.** The law requires the contribution salary to be at least that minimum; an `InsuranceBase` below it is still computed.
+- **An insurance salary below the regional minimum wage is computed as given, with a warning.** A full-time employee must be paid at least that minimum, so `Result.Warnings` reports code `insurance_salary_below_regional_minimum` (the CLI prints it with `[!]`). It is not an error because part-time contracts can legally be lower.
 - **Employer accident insurance is fixed at 0.5%**, so employer social insurance is always 17.5%. Some employers pay 0.3%.
 - **The 2% trade union fee is not in `Employer.TotalCost`.** It is not insurance, but the employer pays it.
 - **Region is the place of work**, not the head office or the employee's home. The library does not infer it; pass the region where the employee works.

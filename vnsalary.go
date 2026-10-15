@@ -1,6 +1,7 @@
 package vnsalary
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -78,7 +79,25 @@ type Result struct {
 	Brackets         []BracketLine `json:"brackets"`
 	Employer         EmployerCost  `json:"employer"`
 	Policy           PolicyRef     `json:"policy"`
+	Warnings         []Warning     `json:"warnings,omitempty"` // Inputs computed as given but worth checking; never change amounts
 }
+
+// Warning flags an input that is computed as given but is probably not what
+// the caller intended. Warnings never change any amount.
+type Warning struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+// WarnInsuranceSalaryBelowRegionalMinimum is reported when the salary used for
+// insurance (InsuranceBase, or gross when InsuranceBase is nil) is positive but
+// below the regional minimum wage. A full-time employee must be paid at least
+// that minimum (Labour Code 2019, Art. 90.2), so a lower insurance salary
+// usually means a part-time contract or an input mistake. It is a warning, not
+// an error: the legal floor for the social insurance salary itself is the
+// reference level (Law on Social Insurance 41/2024/QH15, Art. 31.1), which is
+// lower than the regional minimum.
+const WarnInsuranceSalaryBelowRegionalMinimum = "insurance_salary_below_regional_minimum"
 
 func minVND(a, b VND) VND {
 	if a < b {
@@ -108,8 +127,27 @@ func GrossToNet(gross VND, opts Options) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	res.Policy = res.Policy.clone() // prevent leaking shared slice to caller
-	return res, nil
+	return finalize(policy, res, opts), nil
+}
+
+// finalize prepares a computed result for the caller: it copies the policy
+// reference (so the shared policy table never leaks) and attaches warnings.
+// computeNet stays free of both, because NetToGross calls it many times.
+func finalize(policy *Policy, res Result, opts Options) Result {
+	res.Policy = res.Policy.clone()
+
+	insSalary := res.Gross
+	if opts.InsuranceBase != nil {
+		insSalary = *opts.InsuranceBase
+	}
+	if regionalMin := policy.RegionalMinSalary(opts.Region); insSalary > 0 && insSalary < regionalMin {
+		res.Warnings = append(res.Warnings, Warning{
+			Code: WarnInsuranceSalaryBelowRegionalMinimum,
+			Message: fmt.Sprintf("insurance salary %d VND is below the regional minimum wage %d VND for region %d",
+				insSalary, regionalMin, opts.Region),
+		})
+	}
+	return res
 }
 
 // validateOptions verifies parameter boundaries shared between GrossToNet and NetToGross.

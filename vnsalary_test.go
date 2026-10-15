@@ -1,7 +1,9 @@
 package vnsalary
 
 import (
+	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 )
@@ -634,5 +636,78 @@ func TestNetToGross_Unreachable(t *testing.T) {
 	}
 	if _, err := NetToGross(top.Net+1, opts); !errors.Is(err, ErrNetUnreachable) {
 		t.Errorf("net above Net(MaxGross): want ErrNetUnreachable, got %v", err)
+	}
+}
+
+func TestWarnings_InsuranceSalaryBelowRegionalMinimum(t *testing.T) {
+	low, atMin := VND(4_000_000), VND(5_310_000)
+	tests := []struct {
+		name    string
+		gross   VND
+		region  Region
+		insBase *VND
+		warn    bool
+	}{
+		{"gross below region I minimum", 3_000_000, Region1, nil, true},
+		{"gross equal to minimum", 5_310_000, Region1, nil, false},
+		{"gross above minimum", 35_000_000, Region1, nil, false},
+		{"zero gross", 0, Region1, nil, false},
+		{"region IV minimum is lower", 3_800_000, Region4, nil, false},
+		{"insurance base below minimum, gross high", 30_000_000, Region1, &low, true},
+		{"insurance base equal to minimum", 30_000_000, Region1, &atMin, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := Options{Region: tt.region, Date: date(2026, 3, 15), InsuranceBase: tt.insBase}
+			res, err := GrossToNet(tt.gross, opts)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := len(res.Warnings) == 1 && res.Warnings[0].Code == WarnInsuranceSalaryBelowRegionalMinimum
+			if got != tt.warn || (!tt.warn && len(res.Warnings) != 0) {
+				t.Errorf("warnings = %+v, want warning: %v", res.Warnings, tt.warn)
+			}
+
+			// NetToGross reports the same warning for the gross it finds.
+			inv, err := NetToGross(res.Net, opts)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if (len(inv.Warnings) > 0) != (len(res.Warnings) > 0) && inv.Gross == res.Gross {
+				t.Errorf("NetToGross warnings = %+v, GrossToNet warnings = %+v", inv.Warnings, res.Warnings)
+			}
+		})
+	}
+}
+
+func TestWarnings_DoNotChangeAmounts(t *testing.T) {
+	opts := Options{Region: Region1, Date: date(2026, 3, 15)}
+	res, err := GrossToNet(3_000_000, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 3,000,000 × 10.5% insurance, no tax.
+	if res.Insurance.Total != 315_000 || res.Tax != 0 || res.Net != 2_685_000 {
+		t.Errorf("amounts changed: insurance=%d tax=%d net=%d", res.Insurance.Total, res.Tax, res.Net)
+	}
+}
+
+func TestWarnings_OmittedFromJSONWhenEmpty(t *testing.T) {
+	opts := Options{Region: Region1, Date: date(2026, 3, 15)}
+	for _, tc := range []struct {
+		gross VND
+		want  bool
+	}{{35_000_000, false}, {3_000_000, true}} {
+		res, err := GrossToNet(tc.gross, opts)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := json.Marshal(res)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := strings.Contains(string(data), `"warnings"`); got != tc.want {
+			t.Errorf("gross %d: JSON has warnings key = %v, want %v", tc.gross, got, tc.want)
+		}
 	}
 }

@@ -203,6 +203,39 @@ func TestRun_Golden(t *testing.T) {
 	}
 }
 
+func TestRun_Warnings(t *testing.T) {
+	tests := []struct {
+		args []string
+		want string // "" means no warning line
+	}{
+		{[]string{"gross", "3000000", "--date", "2026-03-15"}, "[!] Lương đóng bảo hiểm thấp hơn lương tối thiểu vùng"},
+		{[]string{"gross", "3000000", "--date", "2026-03-15", "--lang", "en"}, "[!] Insurance salary is below the regional minimum wage"},
+		{[]string{"gross", "30000000", "--ins-base", "4000000", "--date", "2026-03-15"}, "[!] Lương đóng bảo hiểm thấp hơn"},
+		{[]string{"gross", "35000000", "--date", "2026-03-15"}, ""},
+	}
+	for _, tt := range tests {
+		code, stdout, stderr := runCLI(tt.args...)
+		if code != 0 {
+			t.Fatalf("%v: exit %d: %s", tt.args, code, stderr)
+		}
+		if tt.want == "" {
+			if strings.Contains(stdout, "[!]") {
+				t.Errorf("%v: unexpected warning:\n%s", tt.args, stdout)
+			}
+			continue
+		}
+		if !strings.Contains(stdout, tt.want) {
+			t.Errorf("%v: missing %q:\n%s", tt.args, tt.want, stdout)
+		}
+	}
+
+	// JSON carries the code, independent of --lang.
+	_, stdout, _ := runCLI("gross", "3000000", "--date", "2026-03-15", "--json", "--lang", "en")
+	if !strings.Contains(stdout, `"code": "insurance_salary_below_regional_minimum"`) {
+		t.Errorf("JSON missing warning code:\n%s", stdout)
+	}
+}
+
 func TestFormatVND(t *testing.T) {
 	tests := []struct {
 		v      vnsalary.VND
