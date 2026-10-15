@@ -26,6 +26,8 @@ var defaultPolicies = []Policy{
 				"Nghị định 293/2025/NĐ-CP Điều 3 khoản 1 (Lương tối thiểu vùng từ 01/01/2026)",
 				"Nghị quyết 110/2025/UBTVQH15 (Giảm trừ bản thân 15,5M, người phụ thuộc 6,2M)",
 				"Luật Thuế TNCN số 109/2025/QH15 Điều 9 khoản 2, Điều 29 khoản 2 (Biểu thuế 5 bậc với tiền lương từ kỳ tính thuế 2026)",
+				"Luật Thuế TNCN số 109/2025/QH15 Điều 4 khoản 8 & Nghị định 253/2026/NĐ-CP Điều 26 (Miễn thuế toàn bộ tiền lương làm thêm giờ, làm đêm trong giới hạn luật)",
+				"Nghị định 253/2026/NĐ-CP Điều 8 khoản 2 điểm g, Điều 69 khoản 1 điểm b (Tiền ăn giữa ca bằng tiền chỉ tính thuế phần vượt 1.200.000đ/tháng, từ 01/07/2026)",
 			},
 		},
 		BaseSalary:            2_530_000,
@@ -46,6 +48,9 @@ var defaultPolicies = []Policy{
 			{Limit: 100_000_000, RateNumerator: 30, RateDenom: 100},
 			{Limit: math.MaxInt64, RateNumerator: 35, RateDenom: 100},
 		},
+		MealCashCap:         1_200_000,
+		MealCashCapVerified: true,
+		OvertimeFullyExempt: true,
 	},
 
 	// =========================================================================
@@ -65,6 +70,8 @@ var defaultPolicies = []Policy{
 				"Luật BHXH số 41/2024/QH15 Điều 31 khoản 1 điểm đ, Điều 141 khoản 13 (Trần BHXH 20 lần mức tham chiếu; mức tham chiếu bằng lương cơ sở)",
 				"Luật BHYT Điều 14 khoản 5, sửa đổi bởi Luật số 51/2024/QH15 (Trần BHYT 20 lần mức tham chiếu)",
 				"Luật Việc làm số 74/2025/QH15 Điều 34 khoản 2 (Trần BHTN 20 lần lương tối thiểu vùng, hiệu lực 01/01/2026)",
+				"Luật Thuế TNCN số 109/2025/QH15 Điều 4 khoản 8 & Nghị định 253/2026/NĐ-CP Điều 26, Điều 69 khoản 1 (Miễn thuế toàn bộ tiền lương làm thêm giờ, làm đêm từ kỳ tính thuế 2026)",
+				"Tiền ăn giữa ca 730.000đ/tháng theo mức tham chiếu Thông tư 26/2016/TT-BLĐTBXH — ⚠️ chưa xác nhận cho 01–06/2026 (thông tư đã bị bãi bỏ)",
 			},
 		},
 		BaseSalary:            2_340_000,
@@ -85,6 +92,8 @@ var defaultPolicies = []Policy{
 			{Limit: 100_000_000, RateNumerator: 30, RateDenom: 100},
 			{Limit: math.MaxInt64, RateNumerator: 35, RateDenom: 100},
 		},
+		MealCashCap:         730_000,
+		OvertimeFullyExempt: true,
 	},
 
 	// =========================================================================
@@ -104,6 +113,8 @@ var defaultPolicies = []Policy{
 				"Luật BHXH số 41/2024/QH15 Điều 31 khoản 1 điểm đ, Điều 141 khoản 13 & Luật BHYT Điều 14 khoản 5 sửa đổi bởi Luật số 51/2024/QH15 (cùng mức trần, từ 01/07/2025)",
 				"Luật Việc làm 2013 Điều 58 (Trần BHTN 20 lần lương tối thiểu vùng)",
 				"Luật Thuế TNCN 2007 Điều 22, sửa đổi bổ sung (Biểu thuế lũy tiến 7 bậc)",
+				"Thông tư 111/2013/TT-BTC Điều 3 khoản 1 điểm i (Chỉ miễn phần tiền lương làm thêm giờ cao hơn giờ làm việc bình thường)",
+				"Tiền ăn giữa ca 730.000đ/tháng theo mức tham chiếu Thông tư 26/2016/TT-BLĐTBXH — ⚠️ chưa xác nhận ngày bãi bỏ",
 			},
 		},
 		BaseSalary:            2_340_000,
@@ -126,6 +137,7 @@ var defaultPolicies = []Policy{
 			{Limit: 80_000_000, RateNumerator: 30, RateDenom: 100},
 			{Limit: math.MaxInt64, RateNumerator: 35, RateDenom: 100},
 		},
+		MealCashCap: 730_000,
 	},
 }
 

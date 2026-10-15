@@ -11,48 +11,58 @@ type breakpoint struct {
 }
 
 // computeBreakpoints calculates the set of breakpoint thresholds of Gross -> Net in gross space.
+// The points are only interpolation nodes: their nets are computed exactly, and
+// NetToGross verifies every candidate, so an estimate a few VND off is harmless.
 func computeBreakpoints(policy *Policy, opts Options) []breakpoint {
-	var grossPoints []VND
-	grossPoints = append(grossPoints, 0)
+	ex := opts.Extras
+	minGross := ex.total()                   // gross must include every extra
+	notInsured := ex.Overtime + ex.Bonus     // gross - notInsured = insurance salary (InsuranceBase nil)
+	exempt := exemptIncome(policy, ex).Total // constant for given extras
+	totalDeductions := policy.PersonalDeduction + policy.DependentDeduction*VND(opts.Dependents)
+
+	grossPoints := []VND{minGross}
 
 	// Statutory insurance caps when contributions are based on gross salary
 	if opts.InsuranceBase == nil {
-		grossPoints = append(grossPoints, policy.MaxSocialHealthSalary)
-		grossPoints = append(grossPoints, policy.MaxUnemploymentSalary(opts.Region))
+		grossPoints = append(grossPoints,
+			policy.MaxSocialHealthSalary+notInsured,
+			policy.MaxUnemploymentSalary(opts.Region)+notInsured)
 	}
 
-	totalDeductions := policy.PersonalDeduction + policy.DependentDeduction*VND(opts.Dependents)
-
-	// Threshold 1: Point where personal income tax begins (income after insurance exceeds family relief deductions)
-	// AssessableIncome = 0 => PreTax = totalDeductions
-	if totalDeductions > 0 {
-		var gZeroTax VND
+	// grossFor estimates the gross at which assessable income
+	// (gross - exempt - insurance - deductions) reaches target; 0 if none.
+	grossFor := func(target VND) VND {
+		pre := target + totalDeductions + exempt // required gross minus insurance
 		if opts.InsuranceBase != nil {
 			insSalary := *opts.InsuranceBase
 			baseSH := minVND(insSalary, policy.MaxSocialHealthSalary)
 			baseU := minVND(insSalary, policy.MaxUnemploymentSalary(opts.Region))
-			totalIns := roundDiv(int64(baseSH)*95, 1000) + roundDiv(int64(baseU)*1, 100)
-			gZeroTax = totalDeductions + totalIns
+			return pre + roundDiv(int64(baseSH)*95, 1000) + roundDiv(int64(baseU)*1, 100)
+		}
+		// Insurance depends on x = gross - notInsured: solve x - ins(x) = pre - notInsured.
+		y := pre - notInsured
+		if y <= 0 {
+			return 0
+		}
+		capSH := policy.MaxSocialHealthSalary
+		capU := policy.MaxUnemploymentSalary(opts.Region)
+		var x VND
+		if x1 := roundDiv(int64(y)*1000, 895); x1 <= capSH && x1 <= capU {
+			x = x1
 		} else {
-			capSH := policy.MaxSocialHealthSalary
-			capU := policy.MaxUnemploymentSalary(opts.Region)
-			g1 := roundDiv(int64(totalDeductions)*1000, 895)
-			if g1 <= capSH && g1 <= capU {
-				gZeroTax = g1
+			insSH := roundDiv(int64(capSH)*95, 1000)
+			if x2 := roundDiv(int64(y+insSH)*100, 99); x2 <= capU {
+				x = x2
 			} else {
-				insSH := roundDiv(int64(capSH)*95, 1000)
-				g2 := roundDiv(int64(totalDeductions+insSH)*100, 99)
-				if g2 <= capU {
-					gZeroTax = g2
-				} else {
-					insU := roundDiv(int64(capU)*1, 100)
-					gZeroTax = totalDeductions + insSH + insU
-				}
+				x = y + insSH + roundDiv(int64(capU)*1, 100)
 			}
 		}
-		if gZeroTax > 0 {
-			grossPoints = append(grossPoints, gZeroTax)
-		}
+		return x + notInsured
+	}
+
+	// Threshold 1: where personal income tax begins (assessable income = 0)
+	if g := grossFor(0); g > minGross {
+		grossPoints = append(grossPoints, g)
 	}
 
 	// Thresholds 2+: Progressive tax bracket transitions
@@ -60,37 +70,8 @@ func computeBreakpoints(policy *Policy, opts Options) []breakpoint {
 		if b.Limit > 1_000_000_000_000 { // Ignore MaxInt64
 			continue
 		}
-
-		targetPreTax := b.Limit + totalDeductions
-
-		var gEstimate VND
-		if opts.InsuranceBase != nil {
-			insSalary := *opts.InsuranceBase
-			baseSH := minVND(insSalary, policy.MaxSocialHealthSalary)
-			baseU := minVND(insSalary, policy.MaxUnemploymentSalary(opts.Region))
-			totalIns := roundDiv(int64(baseSH)*95, 1000) + roundDiv(int64(baseU)*1, 100)
-			gEstimate = targetPreTax + totalIns
-		} else {
-			capSH := policy.MaxSocialHealthSalary
-			capU := policy.MaxUnemploymentSalary(opts.Region)
-
-			g1 := roundDiv(int64(targetPreTax)*1000, 895)
-			if g1 <= capSH && g1 <= capU {
-				gEstimate = g1
-			} else {
-				insSH := roundDiv(int64(capSH)*95, 1000)
-				g2 := roundDiv(int64(targetPreTax+insSH)*100, 99)
-				if g2 <= capU {
-					gEstimate = g2
-				} else {
-					insU := roundDiv(int64(capU)*1, 100)
-					gEstimate = targetPreTax + insSH + insU
-				}
-			}
-		}
-
-		if gEstimate > 0 {
-			grossPoints = append(grossPoints, gEstimate)
+		if g := grossFor(b.Limit); g > minGross {
+			grossPoints = append(grossPoints, g)
 		}
 	}
 
@@ -150,7 +131,7 @@ func NetToGross(net VND, opts Options) (Result, error) {
 		return finalize(policy, res, opts), nil
 	}
 
-	if net == 0 {
+	if net == 0 && opts.Extras == (Extras{}) {
 		return finish(0)
 	}
 

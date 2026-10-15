@@ -442,44 +442,50 @@ func TestRoundToThousand(t *testing.T) {
 }
 
 func FuzzGrossToNet_NetToGross(f *testing.F) {
-	f.Add(int64(0), 0, 1)
-	f.Add(int64(15_000_000), 1, 1)
-	f.Add(int64(35_000_000), 1, 2)
-	f.Add(int64(80_000_000), 2, 1)
-	f.Add(int64(150_000_000), 0, 3)
+	// gross, dependents, region, policy index, overtime, meal, other exempt, bonus
+	f.Add(int64(0), 0, 1, 0, int64(0), int64(0), int64(0), int64(0))
+	f.Add(int64(15_000_000), 1, 1, 1, int64(0), int64(0), int64(0), int64(0))
+	f.Add(int64(35_000_000), 1, 2, 0, int64(3_000_000), int64(900_000), int64(0), int64(0))
+	f.Add(int64(80_000_000), 2, 1, 2, int64(0), int64(1_500_000), int64(500_000), int64(30_000_000))
+	f.Add(int64(150_000_000), 0, 3, 1, int64(10_000_000), int64(0), int64(0), int64(80_000_000))
 
-	opts := Options{
-		Region: Region1,
-		Date:   date(2026, 1, 15),
-	}
+	dates := []time.Time{date(2025, 3, 10), date(2026, 3, 15), date(2026, 8, 5)}
 
-	f.Fuzz(func(t *testing.T, gross int64, dependents int, region int) {
-		if gross < 0 || gross > 500_000_000 {
+	f.Fuzz(func(t *testing.T, gross int64, dependents, region, policy int, ot, meal, other, bonus int64) {
+		if gross < 0 || gross > 500_000_000 || dependents < 0 || dependents > 10 ||
+			region < 1 || region > 4 || policy < 0 || policy >= len(dates) {
 			return
 		}
-		if dependents < 0 || dependents > 10 {
-			return
+		for _, v := range []int64{ot, meal, other, bonus} {
+			if v < 0 || v > 200_000_000 {
+				return
+			}
 		}
-		if region < 1 || region > 4 {
-			return
+		opts := Options{
+			Dependents: dependents,
+			Region:     Region(region),
+			Date:       dates[policy],
+			Extras:     Extras{Overtime: VND(ot), MealCash: VND(meal), OtherExempt: VND(other), Bonus: VND(bonus)},
 		}
 
-		fOpts := opts
-		fOpts.Dependents = dependents
-		fOpts.Region = Region(region)
-
-		resForward, err := GrossToNet(VND(gross), fOpts)
+		resForward, err := GrossToNet(VND(gross), opts)
+		if errors.Is(err, ErrExtrasExceedGross) {
+			return
+		}
 		if err != nil {
 			t.Fatalf("GrossToNet failed: %v", err)
 		}
 
-		resInverse, err := NetToGross(resForward.Net, fOpts)
+		resInverse, err := NetToGross(resForward.Net, opts)
 		if err != nil {
 			t.Fatalf("NetToGross failed for net %d: %v", resForward.Net, err)
 		}
-
-		if resInverse.Net != resForward.Net {
-			t.Fatalf("Fuzz Net mismatch: got %d, want %d", resInverse.Net, resForward.Net)
+		if resInverse.Net != resForward.Net || resInverse.Gross > resForward.Gross {
+			t.Fatalf("inverse mismatch: NetToGross(%d) = gross %d net %d, from gross %d",
+				resForward.Net, resInverse.Gross, resInverse.Net, resForward.Gross)
+		}
+		if below, err := GrossToNet(resInverse.Gross-1, opts); err == nil && below.Net == resForward.Net {
+			t.Fatalf("gross %d is not the smallest for net %d", resInverse.Gross, resForward.Net)
 		}
 	})
 }
@@ -601,6 +607,7 @@ func TestNetSteps_ZeroOrOne(t *testing.T) {
 			{Dependents: 0, Region: Region1, Date: pol.EffectiveFrom},
 			{Dependents: 2, Region: Region4, Date: pol.EffectiveFrom},
 			{Dependents: 1, Region: Region1, Date: pol.EffectiveFrom, InsuranceBase: &insBase},
+			{Dependents: 1, Region: Region1, Date: pol.EffectiveFrom, Extras: Extras{Overtime: 3_333_333, MealCash: 1_500_000, OtherExempt: 777_777, Bonus: 12_345_678}},
 		} {
 			// Walk a window around every breakpoint, where slopes and rounding change.
 			for _, bp := range computeBreakpoints(pol, opts) {
@@ -708,6 +715,177 @@ func TestWarnings_OmittedFromJSONWhenEmpty(t *testing.T) {
 		}
 		if got := strings.Contains(string(data), `"warnings"`); got != tc.want {
 			t.Errorf("gross %d: JSON has warnings key = %v, want %v", tc.gross, got, tc.want)
+		}
+	}
+}
+
+func hasWarning(r Result, code string) bool {
+	for _, w := range r.Warnings {
+		if w.Code == code {
+			return true
+		}
+	}
+	return false
+}
+
+func TestExtras_ZeroValueKeepsEarlierResults(t *testing.T) {
+	for _, d := range []time.Time{date(2025, 3, 10), date(2026, 3, 15), date(2026, 8, 5)} {
+		for _, g := range []VND{0, 3_000_000, 23_456_789, 60_000_000, 133_456_789} {
+			opts := Options{Dependents: 1, Region: Region1, Date: d}
+			res, err := GrossToNet(g, opts)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if res.Exempt != nil || res.BonusTax != 0 || res.TaxableIncome != g {
+				t.Errorf("%s gross %d: extras fields set without extras: %+v", d.Format("2006-01-02"), g, res)
+			}
+			data, _ := json.Marshal(res)
+			if strings.Contains(string(data), `"exempt"`) || strings.Contains(string(data), `"bonus_tax"`) {
+				t.Errorf("JSON gained extras keys without extras: %s", data)
+			}
+		}
+	}
+}
+
+func TestExtras_Validation(t *testing.T) {
+	base := Options{Region: Region1, Date: date(2026, 8, 5)}
+	tests := []struct {
+		name  string
+		gross VND
+		ex    Extras
+		want  error
+	}{
+		{"negative overtime", 20_000_000, Extras{Overtime: -1}, ErrInvalidAmount},
+		{"negative bonus", 20_000_000, Extras{Bonus: -1}, ErrInvalidAmount},
+		{"too large", 20_000_000, Extras{MealCash: MaxGross + 1}, ErrAmountTooLarge},
+		{"extras exceed gross", 20_000_000, Extras{Bonus: 15_000_000, Overtime: 5_000_001}, ErrExtrasExceedGross},
+	}
+	for _, tt := range tests {
+		opts := base
+		opts.Extras = tt.ex
+		if _, err := GrossToNet(tt.gross, opts); !errors.Is(err, tt.want) {
+			t.Errorf("%s: got %v, want %v", tt.name, err, tt.want)
+		}
+	}
+	// Extras equal to gross is valid (the whole payment is extras).
+	opts := base
+	opts.Extras = Extras{Bonus: 20_000_000}
+	if _, err := GrossToNet(20_000_000, opts); err != nil {
+		t.Errorf("extras == gross: %v", err)
+	}
+}
+
+func TestExtras_InsuranceSalaryAndExemptions(t *testing.T) {
+	opts := Options{Region: Region1, Date: date(2026, 8, 5),
+		Extras: Extras{Overtime: 5_000_000, MealCash: 1_500_000, OtherExempt: 800_000, Bonus: 2_000_000}}
+	res, err := GrossToNet(40_000_000, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Insurance on 40M - 5M overtime - 2M bonus = 33M: 33M × 10.5%.
+	if res.Insurance.Total != 3_465_000 {
+		t.Errorf("insurance = %d, want 3,465,000", res.Insurance.Total)
+	}
+	// Exempt: overtime 5M (2026) + meal capped at 1.2M + other 0.8M = 7M.
+	want := ExemptIncome{Overtime: 5_000_000, Meal: 1_200_000, Other: 800_000, Total: 7_000_000}
+	if res.Exempt == nil || *res.Exempt != want {
+		t.Errorf("exempt = %+v, want %+v", res.Exempt, want)
+	}
+	if res.TaxableIncome != 33_000_000 {
+		t.Errorf("taxable = %d, want 33,000,000", res.TaxableIncome)
+	}
+}
+
+func TestExtras_BonusTax(t *testing.T) {
+	d := date(2026, 8, 5)
+	withBonus, err := GrossToNet(50_000_000, Options{Region: Region1, Date: d, Extras: Extras{Bonus: 20_000_000}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	salaryOnly, err := GrossToNet(30_000_000, Options{Region: Region1, Date: d})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The bonus does not change insurance, so BonusTax is the difference in tax.
+	if withBonus.Insurance != salaryOnly.Insurance {
+		t.Errorf("bonus changed insurance: %+v vs %+v", withBonus.Insurance, salaryOnly.Insurance)
+	}
+	if withBonus.BonusTax != withBonus.Tax-salaryOnly.Tax || withBonus.BonusTax != 2_135_000 {
+		t.Errorf("BonusTax = %d, want %d (= 2,135,000)", withBonus.BonusTax, withBonus.Tax-salaryOnly.Tax)
+	}
+}
+
+func TestExtras_Warnings(t *testing.T) {
+	tests := []struct {
+		name    string
+		date    time.Time
+		ex      Extras
+		insBase *VND
+		want    []string
+		notWant []string
+	}{
+		{"overtime before 2026 is taxed", date(2025, 11, 10), Extras{Overtime: 4_000_000}, nil,
+			[]string{WarnOvertimeTaxedBeforeExemption}, nil},
+		{"overtime in 2026 is exempt", date(2026, 3, 15), Extras{Overtime: 4_000_000}, nil,
+			nil, []string{WarnOvertimeTaxedBeforeExemption}},
+		{"meal cap unverified before 2026-07", date(2026, 6, 30), Extras{MealCash: 900_000}, nil,
+			[]string{WarnMealCapUnverified, WarnInsuranceSalaryIncludesAllowances}, nil},
+		{"meal cap verified from 2026-07", date(2026, 7, 1), Extras{MealCash: 900_000}, nil,
+			[]string{WarnInsuranceSalaryIncludesAllowances}, []string{WarnMealCapUnverified}},
+		{"explicit insurance base silences inference warning", date(2026, 7, 1), Extras{OtherExempt: 500_000}, ptrVND(20_000_000),
+			nil, []string{WarnInsuranceSalaryIncludesAllowances}},
+	}
+	for _, tt := range tests {
+		res, err := GrossToNet(30_000_000, Options{Region: Region1, Date: tt.date, Extras: tt.ex, InsuranceBase: tt.insBase})
+		if err != nil {
+			t.Fatalf("%s: %v", tt.name, err)
+		}
+		for _, c := range tt.want {
+			if !hasWarning(res, c) {
+				t.Errorf("%s: missing warning %s in %+v", tt.name, c, res.Warnings)
+			}
+		}
+		for _, c := range tt.notWant {
+			if hasWarning(res, c) {
+				t.Errorf("%s: unexpected warning %s", tt.name, c)
+			}
+		}
+	}
+	// Overtime before 2026 is taxed: same tax as plain salary of the same gross.
+	ot, _ := GrossToNet(30_000_000, Options{Region: Region1, Date: date(2025, 11, 10), Extras: Extras{Overtime: 4_000_000}})
+	if ot.Exempt.Overtime != 0 || ot.TaxableIncome != 30_000_000 {
+		t.Errorf("overtime before 2026 should not be exempt: %+v", ot.Exempt)
+	}
+}
+
+func ptrVND(v VND) *VND { return &v }
+
+// TestNetToGross_WithExtras: the inverse holds the extras fixed and returns
+// the smallest total gross with the requested net.
+func TestNetToGross_WithExtras(t *testing.T) {
+	ib := VND(10_000_000)
+	for _, opts := range []Options{
+		{Region: Region1, Date: date(2026, 8, 5), Extras: Extras{Overtime: 5_000_000, MealCash: 1_500_000, OtherExempt: 800_000}},
+		{Dependents: 2, Region: Region1, Date: date(2026, 12, 25), Extras: Extras{Bonus: 80_000_000}},
+		{Region: Region4, Date: date(2025, 11, 10), Extras: Extras{Overtime: 4_000_000, MealCash: 900_000}},
+		{Dependents: 1, Region: Region2, Date: date(2026, 10, 5), InsuranceBase: &ib, Extras: Extras{MealCash: 1_000_000, Bonus: 5_000_000}},
+	} {
+		minGross := opts.Extras.total()
+		for g := minGross; g < minGross+300_000_000; g += 7_777_777 {
+			want, err := GrossToNet(g, opts)
+			if err != nil {
+				continue // e.g. insurance on a fixed base exceeds a small gross
+			}
+			got, err := NetToGross(want.Net, opts)
+			if err != nil {
+				t.Fatalf("%+v net %d: %v", opts.Extras, want.Net, err)
+			}
+			if got.Net != want.Net || got.Gross > g {
+				t.Fatalf("%+v: NetToGross(%d) = gross %d net %d, gross %d gives that net", opts.Extras, want.Net, got.Gross, got.Net, g)
+			}
+			if below, err := GrossToNet(got.Gross-1, opts); err == nil && below.Net == want.Net {
+				t.Fatalf("%+v: gross %d not minimal", opts.Extras, got.Gross)
+			}
 		}
 	}
 }

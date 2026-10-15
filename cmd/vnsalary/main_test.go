@@ -56,6 +56,8 @@ func TestRun_ExitCodesAndMessages(t *testing.T) {
 		{"date before first policy", []string{"gross", "35000000", "--date", "2020-01-01"}, 1, "", "Lỗi:"},
 		{"insurance exceeds gross", []string{"gross", "100000", "--ins-base", "5000000", "--date", "2026-01-15"}, 1, "", "Lỗi:"},
 		{"diff earlier period invalid", []string{"diff", "35000000", "--from", "2020-01-01"}, 1, "", "Lỗi kỳ trước"},
+		{"negative extra", []string{"gross", "35000000", "--bonus", "-1", "--date", "2026-01-15"}, 1, "", "Lỗi:"},
+		{"extras exceed gross", []string{"gross", "10000000", "--bonus", "20000000", "--date", "2026-01-15"}, 1, "", "extras exceed gross"},
 		{"diff later period invalid en", []string{"diff", "35000000", "--to", "2020-01-01", "--lang", "en"}, 1, "", "Error in later period"},
 	}
 
@@ -178,6 +180,8 @@ func TestRun_Golden(t *testing.T) {
 		{"net_old_policy_vi.golden", []string{"net", "40000000", "-r", "2", "--date", "2025-03-10"}},
 		{"diff_vi.golden", []string{"diff", "35000000", "-d", "1"}},
 		{"diff_en.golden", []string{"diff", "60000000", "--from", "2026-06-30", "--to", "2026-07-01", "--lang", "en"}},
+		{"extras_vi.golden", []string{"gross", "55000000", "-d", "1", "--overtime", "5000000", "--meal", "1500000", "--other-exempt", "800000", "--bonus", "10000000", "--date", "2026-08-10"}},
+		{"extras_en.golden", []string{"gross", "50000000", "--bonus", "20000000", "--date", "2026-08-10", "--lang", "en"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.file, func(t *testing.T) {

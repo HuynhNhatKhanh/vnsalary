@@ -14,6 +14,29 @@ Entries that change computed amounts are marked **(results change)**.
 
 ## [Unreleased]
 
+### Added
+
+- `Options.Extras` for parts of gross that the law treats differently
+  ([#3](https://github.com/HuynhNhatKhanh/vnsalary/issues/3),
+  [#4](https://github.com/HuynhNhatKhanh/vnsalary/issues/4)). Gross stays the
+  total paid in the month; the zero value keeps earlier results.
+  - `Overtime`: fully tax-exempt from tax period 2026 (Law 109/2025 Art. 4.8,
+    Decree 253/2026 Art. 26); taxed before 2026 with a warning.
+  - `MealCash`: tax-exempt up to 1,200,000/month from 2026-07-01 (Decree
+    253/2026 Art. 8.2.g); 730,000 before, with a warning that it is not
+    confirmed.
+  - `OtherExempt`: other allowances exempt under the employer's regulation.
+  - `Bonus`: taxed in the month paid.
+  - Overtime and bonuses are outside the insurance salary when
+    `InsuranceBase` is nil.
+- `Result.Exempt` (itemized exempt income) and `Result.BonusTax` (tax caused by
+  the bonus), both omitted from JSON when no extras are given.
+- `Policy.MealCashCap`, `Policy.MealCashCapVerified`, `Policy.OvertimeFullyExempt`.
+- `ErrExtrasExceedGross`; warnings `overtime_taxed_before_2026`,
+  `meal_cap_unverified`, `insurance_salary_includes_allowances`.
+- CLI flags `--overtime`, `--meal`, `--other-exempt`, `--bonus`.
+- `NetToGross` with extras: holds them fixed and returns the smallest total gross.
+
 ## [0.2.0] - 2026-10-15
 
 ### Added

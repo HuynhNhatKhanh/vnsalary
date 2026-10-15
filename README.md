@@ -98,6 +98,33 @@ opts := vnsalary.Options{
 result, err := vnsalary.GrossToNet(30_000_000, opts)
 ```
 
+### 4. Overtime, Allowances and Bonuses
+
+Gross is the **total paid in the month**. Tell the library which parts of it are overtime, allowances or a bonus with `Options.Extras`:
+
+```go
+opts := vnsalary.Options{
+	Region: vnsalary.Region1,
+	Date:   time.Date(2026, 8, 10, 0, 0, 0, 0, time.UTC),
+	Extras: vnsalary.Extras{
+		Overtime: 5_000_000,  // tax-exempt from 2026, outside the insurance salary
+		MealCash: 1_500_000,  // tax-exempt up to 1,200,000/month from 2026-07-01
+		Bonus:    10_000_000, // taxed in the month paid, outside the insurance salary
+	},
+}
+result, _ := vnsalary.GrossToNet(55_000_000, opts) // 55M includes the extras
+fmt.Println(result.Exempt.Total, result.BonusTax)   // exempt amount; tax caused by the bonus
+```
+
+| Extra | PIT | Insurance salary (when `InsuranceBase` is nil) | Basis |
+| :--- | :--- | :--- | :--- |
+| `Overtime` (within legal hour limits) | exempt from tax period 2026; before 2026 taxed, with a warning | excluded | Law 109/2025 Art. 4.8, Decree 253/2026 Art. 26 |
+| `MealCash` | exempt up to 1,200,000/month from 2026-07-01; 730,000 before, with a warning (not confirmed) | included | Decree 253/2026 Art. 8.2.g |
+| `OtherExempt` (phone, uniform, …) | exempt; limits are the caller's responsibility | included | Decree 253/2026 Art. 8.2.đ |
+| `Bonus` | taxed in the month paid; `Result.BonusTax` = tax with it − tax without it | excluded | Decree 253/2026 Art. 8.2.i, 46.3 |
+
+Overtime and bonuses vary month to month, so they are outside the salary "paid regularly and stably" that insurance is based on (Law 41/2024 Art. 31.1.b). If your contract also excludes the meal or other allowances, set `InsuranceBase`. `NetToGross` holds the extras fixed and returns the smallest total gross.
+
 ---
 
 ## 📊 Legal Reference & Policy Comparison
@@ -143,9 +170,9 @@ The legal texts set rates and caps but no rounding step, and calculators differ 
 
 ## ⚠️ Limitations
 
-vnsalary covers **resident employees on labour contracts of 3 months or more**, with the whole gross salary taxable. Check these before relying on it for a real payroll:
+vnsalary covers **resident employees on labour contracts of 3 months or more**. Check these before relying on it for a real payroll:
 
-- **No tax-exempt income or bonuses yet.** Overtime premium, meal and phone allowances, and 13th-month or Tết bonuses are not modelled; pass only the taxable salary as gross.
+- **Exempt allowances are taken as given.** `Extras.Overtime` must be pay for hours within the legal limits (pay for extra hours belongs in gross only), and the limits of `Extras.OtherExempt` (phone, uniform, …) follow your employer's regulation; the library does not check them.
 - **Not covered:** annual PIT finalization, contracts under 3 months (10% withholding), non-residents (20%), foreign employees (no unemployment insurance).
 - **An insurance salary below the regional minimum wage is computed as given, with a warning.** A full-time employee must be paid at least that minimum, so `Result.Warnings` reports code `insurance_salary_below_regional_minimum` (the CLI prints it with `[!]`). It is not an error because part-time contracts can legally be lower.
 - **Employer accident insurance is fixed at 0.5%**, so employer social insurance is always 17.5%. Some employers pay 0.3%.
@@ -185,6 +212,13 @@ vnsalary diff 35000000 -d 1 -r 1                                   # default: 20
 vnsalary diff 60000000 --from 2026-06-30 --to 2026-07-01           # any two payment dates
 ```
 
+#### Overtime, allowances and bonuses
+The amount is the total paid in the month; flags say which parts are extras:
+```bash
+vnsalary gross 50000000 --bonus 20000000 --date 2026-08-10        # shows the tax caused by the bonus
+vnsalary gross 55000000 --overtime 5000000 --meal 1500000 --other-exempt 800000 --date 2026-08-10
+```
+
 #### 4. Language Selection
 Default interface is in Vietnamese; `--lang en` switches the whole CLI to English (help, errors, tables, and amounts formatted as `35,000,000 VND`). JSON output is language-independent:
 ```bash
@@ -203,8 +237,8 @@ vnsalary gross 35000000 --json
 
 Example run (`go test -bench=. -benchmem`, linux/amd64, Intel i7-10700K; numbers vary by machine and run):
 ```text
-BenchmarkGrossToNet-16      3694824           325.3 ns/op         320 B/op          4 allocs/op
-BenchmarkNetToGross-16       108325         18020   ns/op       14864 B/op        194 allocs/op
+BenchmarkGrossToNet-16      3850897           329.0 ns/op         336 B/op          3 allocs/op
+BenchmarkNetToGross-16       111998         12749   ns/op       12920 B/op        133 allocs/op
 ```
 
 - **Forward calculation**: sub-microsecond; allocations come from the bracket lines and the copied policy reference in the result.

@@ -29,6 +29,11 @@ type Policy struct {
 
 	// Progressive PIT schedule (biểu thuế lũy tiến từng phần)
 	Brackets []TaxBracket
+
+	// Income excluded from PIT (thu nhập không tính thuế), see Extras.
+	MealCashCap         VND  // Cash meal allowance excluded from taxable income up to this amount per month
+	MealCashCapVerified bool // False when the cap for this period could not be confirmed from a legal text
+	OvertimeFullyExempt bool // Overtime and night-work pay within the legal limits is fully excluded (from tax period 2026)
 }
 
 // MaxUnemploymentSalary returns the statutory cap for unemployment insurance (20 x regional minimum wage).
