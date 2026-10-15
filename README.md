@@ -249,7 +249,7 @@ BenchmarkNetToGross-16       111998         12749   ns/op       12920 B/op      
 ## 🧪 Testing
 
 The library is verified with a comprehensive test suite:
-- **Golden Test Dataset (`testdata/golden.json`):** 25 cases, each with a `source` and `verified_at` field stating how it was checked (hand calculation, an independent reference implementation, or an external calculator). 10 cases were matched to the VND against the TopCV calculator on 2026-10-13; cases not yet cross-checked with an external tool say so explicitly. 11 cases use odd amounts such as 23,456,789 so that every rounding step is exercised, and pin each insurance item.
+- **Golden Test Dataset (`testdata/golden.json`):** 36 cases, each with a `source` and `verified_at` field stating how it was checked (hand calculation, an independent reference implementation, or an external calculator). 12 cases were matched to the VND against the TopCV calculator (2026-10-13 and 2026-10-15); cases not yet cross-checked with an external tool say so explicitly. 11 cases use odd amounts such as 23,456,789 so that every rounding step is exercised, and pin each insurance item.
 - **Round-Trip Invariance Testing:** for every gross `g`, `NetToGross(Net(g))` returns the **smallest** gross with the same net, so `Net(NetToGross(Net(g))) == Net(g)` and `NetToGross(Net(g)).Gross <= g` (several grosses can share one net because of rounding).
 - **Policy invariants:** `TestPoliciesInvariants` fails if a new policy breaks an assumption of the inverse algorithm (ordering, social/health cap below unemployment cap, top bracket 35%, sources present).
 - **Fuzz Testing:** Includes `FuzzGrossToNet_NetToGross` verifying property invariance on arbitrary inputs.

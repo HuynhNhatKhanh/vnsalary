@@ -250,7 +250,7 @@ BenchmarkNetToGross-16       111998         12749   ns/op       12920 B/op      
 
 ## 🧪 Kiểm Thử Chất Lượng (Test Suites)
 
-- **Golden Test Dataset (`testdata/golden.json`):** 25 ca, mỗi ca có trường `source` và `verified_at` ghi rõ đã kiểm bằng cách nào (tính tay theo văn bản, bản tính tham chiếu độc lập, hay công cụ bên ngoài). 10 ca đã khớp tới từng đồng với công cụ của TopCV (kiểm ngày 13/10/2026); ca nào chưa đối chiếu công cụ ngoài thì ghi rõ là chưa. 11 ca dùng số lẻ như 23.456.789 để mọi bước làm tròn đều được kiểm, có ghi kỳ vọng từng khoản bảo hiểm.
+- **Golden Test Dataset (`testdata/golden.json`):** 36 ca, mỗi ca có trường `source` và `verified_at` ghi rõ đã kiểm bằng cách nào (tính tay theo văn bản, bản tính tham chiếu độc lập, hay công cụ bên ngoài). 12 ca đã khớp tới từng đồng với công cụ của TopCV (kiểm ngày 13/10 và 15/10/2026); ca nào chưa đối chiếu công cụ ngoài thì ghi rõ là chưa. 11 ca dùng số lẻ như 23.456.789 để mọi bước làm tròn đều được kiểm, có ghi kỳ vọng từng khoản bảo hiểm.
 - **Tính Bất Biến Hai Chiều:** với mọi gross `g`, `NetToGross` trả về gross **nhỏ nhất** cho cùng net, nên `Net(NetToGross(Net(g))) == Net(g)` và gross tính ngược `<= g` (do làm tròn, nhiều gross có thể ra cùng một net).
 - **Bất biến của bộ luật:** `TestPoliciesInvariants` báo lỗi nếu bộ luật mới phá giả định của thuật toán tính ngược (thứ tự, trần BHXH thấp hơn trần BHTN, bậc cao nhất 35%, có nguồn văn bản).
 - **Fuzz Testing:** Kiểm thử tự động `FuzzGrossToNet_NetToGross` phát hiện ca biên ngẫu nhiên.

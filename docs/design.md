@@ -214,7 +214,7 @@ the 20× cap, increasing brackets, the 35% top rate, or missing sources.
 | Layer | What it proves |
 |---|---|
 | table tests | brackets, caps, regions, dependents, ±1 VND around every bracket limit, dates before/on/after each policy change |
-| golden data (`testdata/golden.json`) | 25 cases with `source`, `verified_at`, `notes`; 11 odd amounts pin each insurance item and the tax rounding |
+| golden data (`testdata/golden.json`) | 36 cases with `source`, `verified_at`, `notes`; 12 matched against TopCV; 11 odd amounts pin each insurance item and the tax rounding; 9 cover overtime, allowances and bonuses |
 | independent reference | expected values for odd amounts come from a separate implementation with exact fractions, not from vnsalary |
 | properties | `Net(NetToGross(n)) == n`; `NetToGross(Net(g)).Gross ≤ g` and minimal; net steps of 0 or 1 |
 | invariants | `TestPoliciesInvariants` on the policy table |
