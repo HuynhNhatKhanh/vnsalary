@@ -269,10 +269,16 @@ Planned work is tracked as GitHub issues grouped by
 [milestone](https://github.com/HuynhNhatKhanh/vnsalary/milestones), ordered by
 how often users are likely to need it:
 
-- **v0.2.0**: tax-exempt income and bonuses, so real payslips can be computed.
-- **v0.3.0**: annual PIT finalization (2026 changed brackets and base salary
+- **v0.2.0** (released): warnings for inputs worth checking, starting with an
+  insurance salary below the regional minimum wage.
+- **v0.3.0**: tax-exempt income and bonuses, so real payslips can be computed.
+- **v0.4.0**: annual PIT finalization (2026 changed brackets and base salary
   within the year).
-- **v0.4.0**: contracts under 3 months, non-residents, foreign employees.
+- **v0.5.0**: contracts under 3 months, non-residents, foreign employees.
+
+Law changes are released as soon as the document is issued, outside this
+order (for example the 2027 regional minimum wage,
+[#16](https://github.com/HuynhNhatKhanh/vnsalary/issues/16)).
 
 A web demo (`vnsalary-web`, a separate repository) and CLI binaries are planned
 outside these milestones.
