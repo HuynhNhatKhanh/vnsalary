@@ -1,0 +1,38 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  binaries:
+    name: build and publish CLI binaries
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+
+      - name: go test
+        run: go test -count=1 ./...
+
+      - name: build
+        run: scripts/build-release.sh "${{ github.ref_name }}"
+
+      # Creates the GitHub release from the CHANGELOG section if it does not
+      # exist yet, then attaches the binaries and checksums.
+      - name: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ github.ref_name }}
+        run: |
+          if ! gh release view "$VERSION" >/dev/null 2>&1; then
+            awk -v v="${VERSION#v}" 'index($0, "## [" v "]") == 1 {f=1; next} /^## \[/ {f=0} f' CHANGELOG.md > notes.md
+            gh release create "$VERSION" --title "$VERSION" --notes-file notes.md
+          fi
+          gh release upload "$VERSION" dist/* --clobber

@@ -240,6 +240,21 @@ func TestRun_Warnings(t *testing.T) {
 	}
 }
 
+func TestRun_Version(t *testing.T) {
+	for _, args := range [][]string{{"version"}, {"--version"}, {"version", "--lang", "en"}} {
+		code, stdout, stderr := runCLI(args...)
+		if code != 0 || stderr != "" || !strings.HasPrefix(stdout, "vnsalary ") {
+			t.Errorf("%v: exit %d, stdout %q, stderr %q", args, code, stdout, stderr)
+		}
+	}
+	old := version
+	version = "v9.9.9"
+	defer func() { version = old }()
+	if _, stdout, _ := runCLI("version"); stdout != "vnsalary v9.9.9\n" {
+		t.Errorf("ldflags version not used: %q", stdout)
+	}
+}
+
 func TestFormatVND(t *testing.T) {
 	tests := []struct {
 		v      vnsalary.VND
