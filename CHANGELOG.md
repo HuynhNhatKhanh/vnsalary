@@ -14,6 +14,10 @@ Entries that change computed amounts are marked **(results change)**.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-16
+
+No change in any computed amount or in the library API.
+
 ### Added
 
 - `vnsalary version` (also `--version`): the release version, or the module
@@ -21,6 +25,9 @@ Entries that change computed amounts are marked **(results change)**.
 - Prebuilt CLI binaries for Linux, macOS and Windows (amd64 and arm64) with
   SHA-256 checksums, attached to each GitHub release by the `Release` workflow
   ([#12](https://github.com/HuynhNhatKhanh/vnsalary/issues/12)).
+- pkg.go.dev examples for bonuses (`BonusTax`), exempt allowances and warnings.
+- Two golden cases for the policy from 2026-07-01 checked against TopCV
+  (36 cases, 12 matched to the VND against TopCV).
 
 ## [0.3.0] - 2026-10-15
 
@@ -107,7 +114,8 @@ First public release.
 - The caller chooses the region; an insurance base below the regional
   minimum wage is not rejected.
 
-[Unreleased]: https://github.com/HuynhNhatKhanh/vnsalary/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/HuynhNhatKhanh/vnsalary/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/HuynhNhatKhanh/vnsalary/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/HuynhNhatKhanh/vnsalary/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/HuynhNhatKhanh/vnsalary/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/HuynhNhatKhanh/vnsalary/releases/tag/v0.1.0
