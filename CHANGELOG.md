@@ -14,6 +14,14 @@ Entries that change computed amounts are marked **(results change)**.
 
 ## [Unreleased]
 
+### Added
+
+- `vnsalary version` (also `--version`): the release version, or the module
+  version for builds made with `go install …@vX.Y.Z`.
+- Prebuilt CLI binaries for Linux, macOS and Windows (amd64 and arm64) with
+  SHA-256 checksums, attached to each GitHub release by the `Release` workflow
+  ([#12](https://github.com/HuynhNhatKhanh/vnsalary/issues/12)).
+
 ## [0.3.0] - 2026-10-15
 
 ### Added

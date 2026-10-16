@@ -6,6 +6,7 @@
 //	vnsalary gross <amount> [flags]   gross to net
 //	vnsalary net <amount> [flags]     net to gross
 //	vnsalary diff <amount> [flags]    compare net between two payment dates
+//	vnsalary version                  print the version
 //
 // Flags: -d/--dependents, -r/--region (1..4), --date YYYY-MM-DD (payment date,
 // default today), --from/--to (for diff), --ins-base, --overtime, --meal,
@@ -21,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -33,6 +35,21 @@ func parseDate(s string) (time.Time, error) {
 		return time.Now(), nil
 	}
 	return time.Parse("2006-01-02", s)
+}
+
+// version is set by release builds with -ldflags "-X main.version=vX.Y.Z".
+// Builds from `go install …@vX.Y.Z` leave it empty and use the module version
+// recorded in the binary instead.
+var version string
+
+func versionString() string {
+	if version != "" {
+		return version
+	}
+	if bi, ok := debug.ReadBuildInfo(); ok && bi.Main.Version != "" && bi.Main.Version != "(devel)" {
+		return bi.Main.Version
+	}
+	return "dev"
 }
 
 // Default periods compared by "diff" when --from/--to are omitted:
@@ -64,6 +81,7 @@ Cách dùng:
   vnsalary gross <số_tiền> [flags]  Tính từ lương Gross sang Net
   vnsalary net <số_tiền> [flags]    Tính từ lương Net sang Gross
   vnsalary diff <số_tiền> [flags]   So sánh lương Net giữa 2 kỳ luật
+  vnsalary version                  In phiên bản
 
 Flags:
   -d, --dependents int      Số người phụ thuộc (mặc định: 0)
@@ -95,6 +113,7 @@ Usage:
   vnsalary gross <amount> [flags]   Convert gross salary to net
   vnsalary net <amount> [flags]     Convert net salary to gross
   vnsalary diff <amount> [flags]    Compare net salary between two policy periods
+  vnsalary version                  Print the version
 
 Flags:
   -d, --dependents int      Number of dependents (default: 0)
@@ -372,6 +391,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 	cmd := args[0]
 	if cmd == "-h" || cmd == "--help" || cmd == "help" {
 		printUsage(stdout, lang)
+		return 0
+	}
+	if cmd == "version" || cmd == "--version" {
+		fmt.Fprintf(stdout, "vnsalary %s\n", versionString())
 		return 0
 	}
 	if strings.HasPrefix(cmd, "-") { // flags given without a command, e.g. "vnsalary --lang en"

@@ -107,6 +107,9 @@ are released as MINOR and listed under **Breaking** in the CHANGELOG.
    and update the compare links at the bottom of `CHANGELOG.md`.
 2. Make sure CI is green on `main`.
 3. Tag and push: `git tag -a vX.Y.Z -m "vX.Y.Z" && git push origin vX.Y.Z`.
+   The `Release` workflow then tests, builds the CLI for Linux, macOS and
+   Windows (`scripts/build-release.sh`), creates the GitHub release from the
+   CHANGELOG section and attaches the archives and `checksums.txt`.
 4. Request the version on the module proxy so pkg.go.dev picks it up:
    `GOPROXY=https://proxy.golang.org go list -m github.com/HuynhNhatKhanh/vnsalary@vX.Y.Z`.
-5. Create a GitHub release from the tag with the CHANGELOG section as notes.
+5. Check the release page: six archives, `checksums.txt`, and the notes.
