@@ -45,8 +45,9 @@ type annualRecord struct {
 }
 
 var (
-	errGrossAndPayslip = errors.New("give either gross or taxable_income, not both")
+	errGrossAndPayslip = errors.New("give either gross (with its options) or the payslip amounts taxable_income, insurance, tax_withheld, not both")
 	errNoAmount        = errors.New("give gross or taxable_income")
+	errTrailingData    = errors.New("more than one JSON value")
 )
 
 // runAnnual executes "vnsalary annual <file.json|->".
@@ -106,10 +107,17 @@ func runAnnual(args []string, stdout, stderr io.Writer, lang string) int {
 	if err := dec.Decode(&in); err != nil {
 		return errorf(stderr, 2, m.errBadInput, path, err)
 	}
+	if dec.More() { // a second object would otherwise be ignored with its payments
+		return errorf(stderr, 2, m.errBadInput, path, errTrailingData)
+	}
 
 	payments := make([]vnsalary.Payment, 0, len(in.Payments))
 	for i, rec := range in.Payments {
-		p, err := rec.payment(in)
+		date, err := rec.check()
+		if err != nil {
+			return errorf(stderr, 2, m.errPayment, i+1, rec.Date, err)
+		}
+		p, err := rec.payment(in, date)
 		if err != nil {
 			return errorf(stderr, 1, m.errPayment, i+1, rec.Date, err)
 		}
@@ -142,17 +150,29 @@ func runAnnual(args []string, stdout, stderr io.Writer, lang string) int {
 	return 0
 }
 
-// payment converts the record into a vnsalary.Payment, computing the
-// withholding with GrossToNet when the record gives gross.
-func (r annualRecord) payment(in annualInput) (vnsalary.Payment, error) {
+// check parses the date and rejects a record that mixes the gross and the
+// payslip form, or gives neither. Its errors are input errors (exit code 2).
+func (r annualRecord) check() (time.Time, error) {
 	date, err := time.Parse("2006-01-02", r.Date)
 	if err != nil {
-		return vnsalary.Payment{}, err
+		return time.Time{}, err
 	}
+	grossOptions := r.InsBase != 0 || r.Overtime != 0 || r.MealCash != 0 || r.OtherExempt != 0 ||
+		r.Bonus != 0 || r.Dependents != nil || r.Region != nil
+	payslip := r.TaxableIncome != nil || r.Insurance != 0 || r.TaxWithheld != 0
+	switch {
+	case (r.Gross != nil || grossOptions) && payslip:
+		return time.Time{}, errGrossAndPayslip
+	case r.Gross == nil && r.TaxableIncome == nil:
+		return time.Time{}, errNoAmount
+	}
+	return date, nil
+}
+
+// payment converts a checked record into a vnsalary.Payment, computing the
+// withholding with GrossToNet when the record gives gross.
+func (r annualRecord) payment(in annualInput, date time.Time) (vnsalary.Payment, error) {
 	if r.Gross == nil {
-		if r.TaxableIncome == nil {
-			return vnsalary.Payment{}, errNoAmount
-		}
 		return vnsalary.Payment{
 			Date:          date,
 			TaxableIncome: vnsalary.VND(*r.TaxableIncome),
@@ -160,10 +180,6 @@ func (r annualRecord) payment(in annualInput) (vnsalary.Payment, error) {
 			TaxWithheld:   vnsalary.VND(r.TaxWithheld),
 		}, nil
 	}
-	if r.TaxableIncome != nil || r.Insurance != 0 || r.TaxWithheld != 0 {
-		return vnsalary.Payment{}, errGrossAndPayslip
-	}
-
 	region, dependents := in.Region, in.Dependents
 	if region == 0 {
 		region = 1
