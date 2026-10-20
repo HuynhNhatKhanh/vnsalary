@@ -6,6 +6,7 @@
 //	vnsalary gross <amount> [flags]   gross to net
 //	vnsalary net <amount> [flags]     net to gross
 //	vnsalary diff <amount> [flags]    compare net between two payment dates
+//	vnsalary annual <file.json>       annual PIT finalization of a tax year
 //	vnsalary version                  print the version
 //
 // Flags: -d/--dependents, -r/--region (1..4), --date YYYY-MM-DD (payment date,
@@ -71,6 +72,10 @@ type messages struct {
 	errFromPeriod string
 	errToPeriod   string
 	errBadCommand string
+	errNoFile     string
+	errReadFile   string
+	errBadInput   string
+	errPayment    string
 }
 
 var msgs = map[string]messages{
@@ -81,6 +86,7 @@ Cách dùng:
   vnsalary gross <số_tiền> [flags]  Tính từ lương Gross sang Net
   vnsalary net <số_tiền> [flags]    Tính từ lương Net sang Gross
   vnsalary diff <số_tiền> [flags]   So sánh lương Net giữa 2 kỳ luật
+  vnsalary annual <file.json>       Quyết toán thuế TNCN năm từ danh sách chi trả ('-' = stdin)
   vnsalary version                  In phiên bản
 
 Flags:
@@ -105,6 +111,10 @@ Flags:
 		errFromPeriod: "Lỗi kỳ trước: %v",
 		errToPeriod:   "Lỗi kỳ sau: %v",
 		errBadCommand: "Lệnh không hợp lệ: %s",
+		errNoFile:     "Lỗi: thiếu file danh sách chi trả. Ví dụ: vnsalary annual payments.json",
+		errReadFile:   "Lỗi đọc file %s: %v",
+		errBadInput:   "Lỗi dữ liệu trong %s: %v",
+		errPayment:    "Lỗi ở lần chi trả %d (%s): %v",
 	},
 	"en": {
 		usage: `vnsalary — Vietnam Gross ↔ Net salary calculator
@@ -113,6 +123,7 @@ Usage:
   vnsalary gross <amount> [flags]   Convert gross salary to net
   vnsalary net <amount> [flags]     Convert net salary to gross
   vnsalary diff <amount> [flags]    Compare net salary between two policy periods
+  vnsalary annual <file.json>       Annual PIT finalization from a list of payments ('-' = stdin)
   vnsalary version                  Print the version
 
 Flags:
@@ -137,6 +148,10 @@ Flags:
 		errFromPeriod: "Error in earlier period: %v",
 		errToPeriod:   "Error in later period: %v",
 		errBadCommand: "Unknown command: %s",
+		errNoFile:     "Error: missing payments file. Example: vnsalary annual payments.json",
+		errReadFile:   "Error reading %s: %v",
+		errBadInput:   "Invalid data in %s: %v",
+		errPayment:    "Error in payment %d (%s): %v",
 	},
 }
 
@@ -238,7 +253,7 @@ func printTable(w io.Writer, r vnsalary.Result, lang string) {
 		fmt.Fprintf(w, " Employer Cost: %s (Gross + Employer Insurance %s)\n",
 			formatVND(r.Employer.TotalCost, lang), formatVND(r.Employer.TotalInsurance, lang))
 		fmt.Fprintf(w, " Applied Policy: %s\n", r.Policy.Description)
-		printWarnings(w, r, lang)
+		printWarnings(w, r.Warnings, lang)
 		return
 	}
 
@@ -281,7 +296,7 @@ func printTable(w io.Writer, r vnsalary.Result, lang string) {
 		desc = r.Policy.Description
 	}
 	fmt.Fprintf(w, " Áp dụng: %s\n", desc)
-	printWarnings(w, r, lang)
+	printWarnings(w, r.Warnings, lang)
 }
 
 // warningText holds the localized text of known warning codes; unknown codes
@@ -299,14 +314,18 @@ var warningText = map[string]map[string]string{
 		"vi": "Mức trần tiền ăn giữa ca cho ngày chi trả này chưa được xác nhận bằng văn bản luật",
 		"en": "The meal allowance cap for this payment date is not confirmed by a legal text",
 	},
+	vnsalary.WarnHealthEducationNotDeductible: {
+		"vi": "Chi phí y tế, giáo dục chỉ được giảm trừ từ kỳ tính thuế 2026; đã bỏ qua",
+		"en": "Medical and tuition expenses are deductible from tax period 2026; ignored",
+	},
 	vnsalary.WarnInsuranceSalaryIncludesAllowances: {
 		"vi": "Lương đóng bảo hiểm đang gồm cả --meal và --other-exempt; dùng --ins-base nếu hợp đồng không tính chúng",
 		"en": "Insurance salary includes --meal and --other-exempt; use --ins-base if the contract excludes them",
 	},
 }
 
-func printWarnings(w io.Writer, r vnsalary.Result, lang string) {
-	for _, warn := range r.Warnings {
+func printWarnings(w io.Writer, warnings []vnsalary.Warning, lang string) {
+	for _, warn := range warnings {
 		text := warningText[warn.Code][lang]
 		if text == "" {
 			text = warn.Message
@@ -403,6 +422,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 	switch cmd {
 	case "gross", "net", "diff":
+	case "annual":
+		return runAnnual(args[1:], stdout, stderr, lang)
 	default:
 		fmt.Fprintf(stderr, m.errBadCommand+"\n", cmd)
 		printUsage(stderr, lang)
