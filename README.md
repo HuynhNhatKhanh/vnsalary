@@ -247,6 +247,24 @@ vnsalary gross 50000000 --bonus 20000000 --date 2026-08-10        # shows the ta
 vnsalary gross 55000000 --overtime 5000000 --meal 1500000 --other-exempt 800000 --date 2026-08-10
 ```
 
+#### Annual PIT finalization
+`vnsalary annual` reads the payments of a tax year from a JSON file (`-` reads stdin). Give each payment either its `gross` (withholding is computed with the file's `dependents` and `region`; `bonus`, `overtime`, `meal`, `other_exempt`, `ins_base` as in `gross`) or the amounts on the payslip (`taxable_income`, `insurance`, `tax_withheld`):
+```json
+{
+  "year": 2026,
+  "dependents": 1,
+  "healthcare": 10000000,
+  "payments": [
+    {"date": "2026-01-28", "gross": 40000000},
+    {"date": "2026-08-28", "taxable_income": 25000000, "insurance": 2625000, "tax_withheld": 343750}
+  ]
+}
+```
+```bash
+vnsalary annual payments.json            # prints TO PAY or REFUNDABLE
+```
+`dependent_months` defaults to `dependents` × 12; `charity`, `healthcare` and `education` are yearly amounts. Unknown fields are rejected, so a typo cannot silently drop a deduction.
+
 #### 4. Language Selection
 Default interface is in Vietnamese; `--lang en` switches the whole CLI to English (help, errors, tables, and amounts formatted as `35,000,000 VND`). JSON output is language-independent:
 ```bash

@@ -249,6 +249,24 @@ vnsalary gross 50000000 --bonus 20000000 --date 2026-08-10        # hiện phầ
 vnsalary gross 55000000 --overtime 5000000 --meal 1500000 --other-exempt 800000 --date 2026-08-10
 ```
 
+#### Quyết toán thuế TNCN năm
+`vnsalary annual` đọc các lần chi trả trong năm từ file JSON (`-` để đọc từ stdin). Mỗi lần chi trả ghi `gross` (khoản khấu trừ được tính theo `dependents` và `region` của file; `bonus`, `overtime`, `meal`, `other_exempt`, `ins_base` như lệnh `gross`) hoặc ghi đúng số trên phiếu lương (`taxable_income`, `insurance`, `tax_withheld`):
+```json
+{
+  "year": 2026,
+  "dependents": 1,
+  "healthcare": 10000000,
+  "payments": [
+    {"date": "2026-01-28", "gross": 40000000},
+    {"date": "2026-08-28", "taxable_income": 25000000, "insurance": 2625000, "tax_withheld": 343750}
+  ]
+}
+```
+```bash
+vnsalary annual payments.json            # in CÒN PHẢI NỘP hoặc ĐƯỢC HOÀN
+```
+`dependent_months` mặc định bằng `dependents` × 12; `charity`, `healthcare`, `education` là số tiền cả năm. Trường lạ bị từ chối, để gõ sai tên trường không làm mất khoản giảm trừ mà không biết.
+
 #### 4. Chọn Ngôn Ngữ Hiển Thị
 Giao diện mặc định là tiếng Việt. `--lang en` chuyển toàn bộ CLI sang tiếng Anh (hướng dẫn, thông báo lỗi, bảng kết quả, số tiền dạng `35,000,000 VND`). Kết quả `--json` không phụ thuộc ngôn ngữ:
 ```bash

@@ -57,8 +57,16 @@ func TestRun_ExitCodesAndMessages(t *testing.T) {
 		{"insurance exceeds gross", []string{"gross", "100000", "--ins-base", "5000000", "--date", "2026-01-15"}, 1, "", "Lỗi:"},
 		{"diff earlier period invalid", []string{"diff", "35000000", "--from", "2020-01-01"}, 1, "", "Lỗi kỳ trước"},
 		{"negative extra", []string{"gross", "35000000", "--bonus", "-1", "--date", "2026-01-15"}, 1, "", "Lỗi:"},
+		{"negative insurance base", []string{"gross", "35000000", "--ins-base", "-1", "--date", "2026-01-15"}, 1, "", "non-negative"},
 		{"extras exceed gross", []string{"gross", "10000000", "--bonus", "20000000", "--date", "2026-01-15"}, 1, "", "extras exceed gross"},
 		{"diff later period invalid en", []string{"diff", "35000000", "--to", "2020-01-01", "--lang", "en"}, 1, "", "Error in later period"},
+
+		{"annual ok", []string{"annual", "testdata/annual_job_change.json"}, 0, "ĐƯỢC HOÀN: 2.831.250 đ", ""},
+		{"annual file after flags", []string{"annual", "--lang", "en", "testdata/annual_job_change.json"}, 0, "REFUNDABLE: 2,831,250 VND", ""},
+		{"annual missing file", []string{"annual"}, 2, "", "thiếu file danh sách chi trả"},
+		{"annual unreadable file", []string{"annual", "testdata/does-not-exist.json"}, 2, "", "Lỗi đọc file testdata/does-not-exist.json"},
+		{"annual unknown flag", []string{"annual", "testdata/annual_job_change.json", "-x"}, 2, "", "flag provided but not defined: -x"},
+		{"annual help", []string{"annual", "-h"}, 0, "vnsalary annual <file.json>", ""},
 	}
 
 	for _, tt := range tests {
@@ -182,6 +190,8 @@ func TestRun_Golden(t *testing.T) {
 		{"diff_en.golden", []string{"diff", "60000000", "--from", "2026-06-30", "--to", "2026-07-01", "--lang", "en"}},
 		{"extras_vi.golden", []string{"gross", "55000000", "-d", "1", "--overtime", "5000000", "--meal", "1500000", "--other-exempt", "800000", "--bonus", "10000000", "--date", "2026-08-10"}},
 		{"extras_en.golden", []string{"gross", "50000000", "--bonus", "20000000", "--date", "2026-08-10", "--lang", "en"}},
+		{"annual_vi.golden", []string{"annual", "testdata/annual_job_change.json"}},
+		{"annual_en.golden", []string{"annual", "testdata/annual_deductions.json", "--lang", "en"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.file, func(t *testing.T) {
@@ -309,3 +319,99 @@ func TestDetectLang(t *testing.T) {
 		}
 	}
 }
+
+// writeTemp writes content to a JSON file in a test temp directory.
+func writeTemp(t *testing.T, content string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "payments.json")
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func TestRun_AnnualInputErrors(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		wantCode int
+		want     string
+	}{
+		{"misspelled field", `{"paymnts": []}`, 2, `unknown field "paymnts"`},
+		{"not json", `payments`, 2, "Lỗi dữ liệu"},
+		{"two json values", `{"payments": []} {"payments": [{"date": "2026-01-01", "taxable_income": 1}]}`, 2, "data after the JSON object"},
+		{"trailing delimiter", `{"payments": []} }`, 2, "data after the JSON object"},
+		{"negative ins_base", `{"payments": [{"date": "2026-02-01", "gross": 30000000, "ins_base": -1}]}`, 1, "non-negative"},
+		{"bad date", `{"payments": [{"date": "2026-02-30", "gross": 1}]}`, 2, "Lỗi ở lần chi trả 1 (2026-02-30)"},
+		{"gross and payslip", `{"payments": [{"date": "2026-02-01", "gross": 30000000, "tax_withheld": 1}]}`, 2, "not both"},
+		{"payslip with a gross option", `{"payments": [{"date": "2026-12-20", "taxable_income": 30000000, "bonus": 20000000}]}`, 2, "not both"},
+		{"no amount", `{"payments": [{"date": "2026-02-01", "insurance": 1}]}`, 2, "give gross or taxable_income"},
+		{"gross option without gross", `{"payments": [{"date": "2026-02-01", "bonus": 1}]}`, 2, "give gross or taxable_income"},
+		{"gross error", `{"payments": [{"date": "2026-02-01", "gross": 30000000, "region": 9}]}`, 1, "lần chi trả 1"},
+		{"payment outside year", `{"year": 2026, "payments": [{"date": "2025-12-31", "taxable_income": 1}]}`, 1, "outside the tax year"},
+		{"year before 2025", `{"payments": [{"date": "2024-12-31", "taxable_income": 1}]}`, 1, "2025 or later"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			code, stdout, stderr := runCLI("annual", writeTemp(t, tt.input))
+			if code != tt.wantCode {
+				t.Errorf("exit code = %d, want %d\nstderr:\n%s", code, tt.wantCode, stderr)
+			}
+			checkStream(t, "stdout", stdout, "")
+			checkStream(t, "stderr", stderr, tt.want)
+		})
+	}
+}
+
+// Payments given as gross are computed with GrossToNet using the file's
+// dependents and region, overridable per payment; dependent_months defaults
+// to dependents × 12.
+func TestRun_AnnualGrossDefaultsAndOverrides(t *testing.T) {
+	path := writeTemp(t, `{
+		"dependents": 1,
+		"region": 2,
+		"payments": [
+			{"date": "2026-03-10", "gross": 30000000},
+			{"date": "2026-04-10", "gross": 30000000, "dependents": 0, "region": 1, "bonus": 5000000, "ins_base": 20000000}
+		]
+	}`)
+	code, stdout, stderr := runCLI("annual", path, "--json")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	var got vnsalary.AnnualResult
+	if err := json.Unmarshal([]byte(stdout), &got); err != nil {
+		t.Fatal(err)
+	}
+
+	var payments []vnsalary.Payment
+	for _, c := range []struct {
+		date        time.Time
+		dep, region int
+		bonus       vnsalary.VND
+		insBase     *vnsalary.VND
+	}{
+		{time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC), 1, 2, 0, nil},
+		{time.Date(2026, 4, 10, 0, 0, 0, 0, time.UTC), 0, 1, 5_000_000, ptr(vnsalary.VND(20_000_000))},
+	} {
+		r, err := vnsalary.GrossToNet(30_000_000, vnsalary.Options{
+			Dependents: c.dep, Region: vnsalary.Region(c.region), Date: c.date,
+			InsuranceBase: c.insBase, Extras: vnsalary.Extras{Bonus: c.bonus},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		payments = append(payments, r.Payment(c.date))
+	}
+	want, err := vnsalary.Annual(2026, payments, vnsalary.AnnualOptions{DependentMonths: 12})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantJSON, _ := json.Marshal(want)
+	gotJSON, _ := json.Marshal(got)
+	if string(gotJSON) != string(wantJSON) {
+		t.Errorf("CLI result differs from the library:\n got  %s\n want %s", gotJSON, wantJSON)
+	}
+}
+
+func ptr[T any](v T) *T { return &v }

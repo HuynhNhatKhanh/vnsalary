@@ -34,7 +34,7 @@ disagreed between sources. A parameter set with citations is useful in itself.
 | PIT | progressive by bracket: 7 brackets until 2025, 5 brackets from 2026 |
 | Employer cost | BHXH 17.5% (incl. 0.5% occupational accident), BHYT 3%, BHTN 1% |
 | Policy by date | `Options.Date` selects the parameter set |
-| CLI | `gross`, `net`, `diff`, `--json`, `--lang vi\|en` |
+| CLI | `gross`, `net`, `diff`, `annual` (JSON file of payments), `--json`, `--lang vi\|en` |
 | Extras (v0.3.0) | overtime, cash meal allowance, other exempt allowances and bonus inside gross; exempt income, insurance salary and the tax caused by the bonus |
 | Annual finalization (v0.4.0) | yearly tax on all payments of a tax year vs. the tax withheld; 12 months of personal deduction, dependent months, charity, medical and tuition deductions (§8) |
 

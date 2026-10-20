@@ -1,0 +1,59 @@
+{
+  "year": 2026,
+  "payments": [
+    {
+      "date": "2026-01-28",
+      "gross": 40000000
+    },
+    {
+      "date": "2026-02-28",
+      "gross": 40000000
+    },
+    {
+      "date": "2026-03-28",
+      "gross": 40000000
+    },
+    {
+      "date": "2026-04-28",
+      "gross": 40000000
+    },
+    {
+      "date": "2026-05-28",
+      "gross": 40000000
+    },
+    {
+      "date": "2026-06-28",
+      "gross": 40000000
+    },
+    {
+      "date": "2026-08-28",
+      "taxable_income": 25000000,
+      "insurance": 2625000,
+      "tax_withheld": 343750
+    },
+    {
+      "date": "2026-09-28",
+      "taxable_income": 25000000,
+      "insurance": 2625000,
+      "tax_withheld": 343750
+    },
+    {
+      "date": "2026-10-28",
+      "taxable_income": 25000000,
+      "insurance": 2625000,
+      "tax_withheld": 343750
+    },
+    {
+      "date": "2026-11-28",
+      "taxable_income": 25000000,
+      "insurance": 2625000,
+      "tax_withheld": 343750
+    },
+    {
+      "date": "2026-12-28",
+      "taxable_income": 25000000,
+      "insurance": 2625000,
+      "tax_withheld": 343750
+    }
+  ]
+}

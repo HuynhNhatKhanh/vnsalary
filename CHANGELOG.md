@@ -29,8 +29,16 @@ Entries that change computed amounts are marked **(results change)**.
   `health_education_not_deductible`.
 - `Policy.HealthcareDeductionCap` and `Policy.EducationDeductionCap`, and the
   legal sources for finalization in the 2024-07-01 and 2026 policies.
+- `vnsalary annual <file.json>`: finalization from a JSON file of payments,
+  each given as gross (withholding computed with `GrossToNet`) or as the
+  amounts on the payslip; table in Vietnamese or English, or `--json`.
+  Unknown fields are rejected.
 - Four golden finalization cases (job change, December bonus, a steady 2025
   salary, 2026 deductions), computed by hand and by an independent script.
+
+### Fixed
+
+- CLI: a negative `--ins-base` is now an error instead of being ignored.
 
 No change in any monthly computed amount.
 
