@@ -8,6 +8,13 @@ const (
 
 	// MaxDependents is the maximum allowed number of dependents.
 	MaxDependents = 50
+
+	// MaxAnnualPayments is the maximum number of payments Annual accepts for one tax year.
+	MaxAnnualPayments = 1000
+
+	// FirstAnnualYear is the first tax year Annual supports: the policy data
+	// starts on 2024-07-01, so 2025 is the first year it covers in full.
+	FirstAnnualYear = 2025
 )
 
 var (
@@ -35,6 +42,18 @@ var (
 
 	// ErrInsuranceExceedsGross indicates that the mandatory employee insurance contribution exceeds the gross salary.
 	ErrInsuranceExceedsGross = errors.New("vnsalary: insurance contribution exceeds gross salary")
+
+	// ErrYearOutOfRange indicates that Annual was asked for a tax year before FirstAnnualYear.
+	ErrYearOutOfRange = errors.New("vnsalary: tax year must be 2025 or later")
+
+	// ErrPaymentOutsideYear indicates that a payment passed to Annual is dated outside the tax year.
+	ErrPaymentOutsideYear = errors.New("vnsalary: payment date is outside the tax year")
+
+	// ErrTooManyPayments indicates that Annual received more than MaxAnnualPayments payments.
+	ErrTooManyPayments = errors.New("vnsalary: too many payments (maximum 1000 per tax year)")
+
+	// ErrInvalidDependentMonths indicates that AnnualOptions.DependentMonths is outside [0, MaxDependents*12].
+	ErrInvalidDependentMonths = errors.New("vnsalary: dependent months must be between 0 and 600")
 
 	// ErrNetUnreachable indicates that no integer gross amount maps to this exact net salary due to half-up discretization.
 	ErrNetUnreachable = errors.New("vnsalary: net salary is unreachable due to integer rounding")

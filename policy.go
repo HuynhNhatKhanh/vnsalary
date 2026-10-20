@@ -34,6 +34,11 @@ type Policy struct {
 	MealCashCap         VND  // Cash meal allowance excluded from taxable income up to this amount per month
 	MealCashCapVerified bool // False when the cap for this period could not be confirmed from a legal text
 	OvertimeFullyExempt bool // Overtime and night-work pay within the legal limits is fully excluded (from tax period 2026)
+
+	// Yearly caps on medical and tuition expenses of the taxpayer and dependents
+	// deductible at annual finalization (from tax period 2026); zero = not deductible.
+	HealthcareDeductionCap VND
+	EducationDeductionCap  VND
 }
 
 // MaxUnemploymentSalary returns the statutory cap for unemployment insurance (20 x regional minimum wage).

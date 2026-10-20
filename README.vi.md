@@ -125,6 +125,32 @@ fmt.Println(result.Exempt.Total, result.BonusTax)   // phần được miễn; t
 
 Làm thêm giờ và tiền thưởng thay đổi theo từng tháng, nên không thuộc khoản "trả thường xuyên, ổn định" làm căn cứ đóng bảo hiểm (Luật 41/2024 Điều 31.1.b). Nếu hợp đồng cũng không tính tiền ăn hay phụ cấp khác vào lương đóng BH, hãy truyền `InsuranceBase`. `NetToGross` giữ nguyên các khoản Extras và trả về tổng gross nhỏ nhất.
 
+### 5. Quyết Toán Thuế TNCN Năm
+
+Thuế khấu trừ hằng tháng lệch với thuế cả năm khi thu nhập không đều, khi đổi chỗ làm hoặc không làm đủ năm (giảm trừ bản thân vẫn tính đủ 12 tháng), hay khi đăng ký người phụ thuộc muộn. `Annual` tính thuế cả năm và số còn phải nộp hoặc được hoàn:
+
+```go
+var payments []vnsalary.Payment
+for month := 1; month <= 12; month++ {
+	paid := time.Date(2026, time.Month(month), 28, 0, 0, 0, 0, time.UTC)
+	r, _ := vnsalary.GrossToNet(30_000_000, vnsalary.Options{Region: vnsalary.Region1, Dependents: 1, Date: paid})
+	payments = append(payments, r.Payment(paid)) // hoặc điền Payment theo phiếu lương
+}
+res, _ := vnsalary.Annual(2026, payments, vnsalary.AnnualOptions{
+	DependentMonths: 12,         // một người phụ thuộc cả năm
+	Healthcare:      10_000_000, // được trừ từ 2026, tối đa 23 triệu/năm
+})
+fmt.Println(res.Tax, res.Withheld, res.Balance) // Balance < 0: được hoàn
+```
+
+| Khoản giảm trừ | Mức | Căn cứ |
+| :--- | :--- | :--- |
+| Bản thân | 12 × mức tháng, dù làm bao nhiêu tháng | NĐ 253/2026 Điều 48.1.b |
+| Người phụ thuộc | `DependentMonths` × mức tháng, tính từ tháng phát sinh nghĩa vụ nuôi dưỡng | NĐ 253/2026 Điều 48.2.a |
+| Từ thiện, y tế (≤ 23 triệu), giáo dục (≤ 24 triệu) | theo năm, từ kỳ tính thuế 2026; có khoản này thì phải tự quyết toán | NĐ 253/2026 Điều 49, 51.3 |
+
+Biểu thuế năm bằng biểu tháng × 12 (Luật 109/2025 Điều 9.2). Hỗ trợ kỳ tính thuế từ 2025.
+
 ---
 
 ## 📊 Bảng Căn Cứ Pháp Lý (2024 vs 2026)
@@ -175,7 +201,7 @@ Văn bản luật quy định tỉ lệ và mức trần nhưng không quy đị
 vnsalary áp dụng cho **người lao động cư trú, hợp đồng lao động từ 3 tháng trở lên**. Hãy đọc các điểm sau trước khi dùng cho bảng lương thật:
 
 - **Các khoản miễn thuế được nhận như người dùng truyền vào.** `Extras.Overtime` phải là tiền làm thêm trong giới hạn giờ luật cho phép (phần vượt giới hạn chỉ để trong gross), và mức của `Extras.OtherExempt` (điện thoại, trang phục…) theo quy chế công ty; thư viện không kiểm các mức này.
-- **Chưa hỗ trợ:** quyết toán thuế năm, hợp đồng dưới 3 tháng (khấu trừ 10%), người không cư trú (20%), người nước ngoài (không đóng BHTN).
+- **Chưa hỗ trợ:** hợp đồng dưới 3 tháng (khấu trừ 10%), người không cư trú (20%), người nước ngoài (không đóng BHTN). Khoản đã khấu trừ 10% vẫn đưa được vào `Annual`.
 - **Lương đóng bảo hiểm thấp hơn lương tối thiểu vùng vẫn được tính, kèm cảnh báo.** Người làm toàn thời gian phải được trả ít nhất mức này, nên `Result.Warnings` báo mã `insurance_salary_below_regional_minimum` (CLI in dòng `[!]`). Đây không phải lỗi vì hợp đồng bán thời gian có thể thấp hơn hợp pháp.
 - **Tỉ lệ TNLĐ-BNN của công ty cố định 0,5%**, nên BHXH phần công ty luôn là 17,5%. Một số doanh nghiệp đóng 0,3%.
 - **Kinh phí công đoàn 2% không nằm trong `Employer.TotalCost`.** Đây không phải bảo hiểm, nhưng công ty vẫn phải đóng.

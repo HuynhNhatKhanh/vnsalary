@@ -2,6 +2,7 @@ package vnsalary
 
 import (
 	"fmt"
+	"math"
 	"time"
 )
 
@@ -234,19 +235,13 @@ func validateOptions(opts Options) error {
 		return ErrInvalidRegion
 	}
 	if opts.InsuranceBase != nil {
-		if *opts.InsuranceBase < 0 {
-			return ErrInvalidAmount
-		}
-		if *opts.InsuranceBase > MaxGross {
-			return ErrAmountTooLarge
+		if err := checkAmount(*opts.InsuranceBase); err != nil {
+			return err
 		}
 	}
 	for _, v := range []VND{opts.Extras.Overtime, opts.Extras.MealCash, opts.Extras.OtherExempt, opts.Extras.Bonus} {
-		if v < 0 {
-			return ErrInvalidAmount
-		}
-		if v > MaxGross {
-			return ErrAmountTooLarge
+		if err := checkAmount(v); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -273,16 +268,28 @@ func insuranceSalary(gross VND, opts Options) VND {
 	return gross - opts.Extras.Overtime - opts.Extras.Bonus
 }
 
-// progressiveTax applies the policy's progressive schedule to assessable
-// income, rounding each bracket half-up to 1 VND.
+// progressiveTax applies the policy's monthly progressive schedule to
+// assessable income, rounding each bracket half-up to 1 VND.
 func progressiveTax(policy *Policy, assessable VND) (VND, []BracketLine) {
+	return scheduleTax(policy.Brackets, 1, assessable)
+}
+
+// scheduleTax applies a progressive schedule whose bracket limits are
+// multiplied by months (12 for the yearly schedule, Law on PIT 109/2025/QH15
+// Art. 9.2), rounding each bracket half-up to 1 VND.
+func scheduleTax(brackets []TaxBracket, months VND, assessable VND) (VND, []BracketLine) {
 	var total VND
 	var lines []BracketLine
 	rem := assessable
 	var prevLimit VND
-	for i, b := range policy.Brackets {
+	for i, b := range brackets {
 		if rem <= 0 {
 			break
+		}
+		if b.Limit <= math.MaxInt64/months {
+			b.Limit *= months
+		} else {
+			b.Limit = math.MaxInt64 // top bracket: no upper limit
 		}
 		part := minVND(rem, b.Limit-prevLimit)
 		if part > 0 {

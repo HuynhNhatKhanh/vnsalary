@@ -136,3 +136,42 @@ func ExampleResult_warnings() {
 	// insurance_salary_below_regional_minimum
 	// Net: 2685000 VND
 }
+
+// Changed employer in 2026: 40M a month from January to June, no income in
+// July, 25M a month from August. Each employer withheld with a monthly personal
+// deduction; at finalization the personal deduction counts all 12 months, so
+// part of the tax is refunded.
+func ExampleAnnual() {
+	var payments []vnsalary.Payment
+	for month := 1; month <= 12; month++ {
+		gross := vnsalary.VND(40_000_000)
+		switch {
+		case month == 7:
+			continue
+		case month > 7:
+			gross = 25_000_000
+		}
+		paid := time.Date(2026, time.Month(month), 28, 0, 0, 0, 0, time.UTC)
+		res, err := vnsalary.GrossToNet(gross, vnsalary.Options{Region: vnsalary.Region1, Date: paid})
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		payments = append(payments, res.Payment(paid))
+	}
+
+	res, err := vnsalary.Annual(2026, payments, vnsalary.AnnualOptions{})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("Personal deduction:", res.Deductions.Personal)
+	fmt.Println("Tax for the year:  ", res.Tax)
+	fmt.Println("Tax withheld:      ", res.Withheld)
+	fmt.Println("Balance:           ", res.Balance)
+	// Output:
+	// Personal deduction: 186000000
+	// Tax for the year:   8067500
+	// Tax withheld:       10898750
+	// Balance:            -2831250
+}
