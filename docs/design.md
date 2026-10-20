@@ -344,7 +344,7 @@ how often users are likely to need it:
 - **v0.2.0** (released): warnings for inputs worth checking, starting with an
   insurance salary below the regional minimum wage.
 - **v0.3.0** (released): tax-exempt income and bonuses, so real payslips can be computed.
-- **v0.4.0**: annual PIT finalization
+- **v0.4.0** (released): annual PIT finalization
   ([#6](https://github.com/HuynhNhatKhanh/vnsalary/issues/6)): uneven income,
   job changes and late dependents make monthly withholding differ from the
   yearly tax.

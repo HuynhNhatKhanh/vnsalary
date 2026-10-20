@@ -14,6 +14,10 @@ Entries that change computed amounts are marked **(results change)**.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-20
+
+No change in any monthly computed amount. New API for annual finalization.
+
 ### Added
 
 - `Annual` computes the annual PIT finalization of a tax year from its
@@ -39,8 +43,6 @@ Entries that change computed amounts are marked **(results change)**.
 ### Fixed
 
 - CLI: a negative `--ins-base` is now an error instead of being ignored.
-
-No change in any monthly computed amount.
 
 ## [0.3.1] - 2026-10-16
 
@@ -142,7 +144,8 @@ First public release.
 - The caller chooses the region; an insurance base below the regional
   minimum wage is not rejected.
 
-[Unreleased]: https://github.com/HuynhNhatKhanh/vnsalary/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/HuynhNhatKhanh/vnsalary/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/HuynhNhatKhanh/vnsalary/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/HuynhNhatKhanh/vnsalary/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/HuynhNhatKhanh/vnsalary/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/HuynhNhatKhanh/vnsalary/compare/v0.1.0...v0.2.0
