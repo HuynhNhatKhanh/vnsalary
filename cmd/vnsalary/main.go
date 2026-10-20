@@ -503,7 +503,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	var insBase *vnsalary.VND
-	if *insBaseFlag > 0 {
+	if *insBaseFlag != 0 { // a negative value is rejected by the library, not ignored
 		v := vnsalary.VND(*insBaseFlag)
 		insBase = &v
 	}

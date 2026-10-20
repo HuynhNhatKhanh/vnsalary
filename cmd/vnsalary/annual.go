@@ -47,7 +47,7 @@ type annualRecord struct {
 var (
 	errGrossAndPayslip = errors.New("give either gross (with its options) or the payslip amounts taxable_income, insurance, tax_withheld, not both")
 	errNoAmount        = errors.New("give gross or taxable_income")
-	errTrailingData    = errors.New("more than one JSON value")
+	errTrailingData    = errors.New("data after the JSON object")
 )
 
 // runAnnual executes "vnsalary annual <file.json|->".
@@ -107,7 +107,9 @@ func runAnnual(args []string, stdout, stderr io.Writer, lang string) int {
 	if err := dec.Decode(&in); err != nil {
 		return errorf(stderr, 2, m.errBadInput, path, err)
 	}
-	if dec.More() { // a second object would otherwise be ignored with its payments
+	// Anything after the object, such as a second object with more payments,
+	// would otherwise be ignored.
+	if _, err := dec.Token(); !errors.Is(err, io.EOF) {
 		return errorf(stderr, 2, m.errBadInput, path, errTrailingData)
 	}
 
@@ -201,7 +203,7 @@ func (r annualRecord) payment(in annualInput, date time.Time) (vnsalary.Payment,
 			Bonus:       vnsalary.VND(r.Bonus),
 		},
 	}
-	if r.InsBase > 0 {
+	if r.InsBase != 0 { // a negative value is rejected by GrossToNet, not ignored
 		v := vnsalary.VND(r.InsBase)
 		opts.InsuranceBase = &v
 	}

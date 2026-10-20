@@ -36,6 +36,10 @@ Entries that change computed amounts are marked **(results change)**.
 - Four golden finalization cases (job change, December bonus, a steady 2025
   salary, 2026 deductions), computed by hand and by an independent script.
 
+### Fixed
+
+- CLI: a negative `--ins-base` is now an error instead of being ignored.
+
 No change in any monthly computed amount.
 
 ## [0.3.1] - 2026-10-16

@@ -57,6 +57,7 @@ func TestRun_ExitCodesAndMessages(t *testing.T) {
 		{"insurance exceeds gross", []string{"gross", "100000", "--ins-base", "5000000", "--date", "2026-01-15"}, 1, "", "Lỗi:"},
 		{"diff earlier period invalid", []string{"diff", "35000000", "--from", "2020-01-01"}, 1, "", "Lỗi kỳ trước"},
 		{"negative extra", []string{"gross", "35000000", "--bonus", "-1", "--date", "2026-01-15"}, 1, "", "Lỗi:"},
+		{"negative insurance base", []string{"gross", "35000000", "--ins-base", "-1", "--date", "2026-01-15"}, 1, "", "non-negative"},
 		{"extras exceed gross", []string{"gross", "10000000", "--bonus", "20000000", "--date", "2026-01-15"}, 1, "", "extras exceed gross"},
 		{"diff later period invalid en", []string{"diff", "35000000", "--to", "2020-01-01", "--lang", "en"}, 1, "", "Error in later period"},
 
@@ -338,7 +339,9 @@ func TestRun_AnnualInputErrors(t *testing.T) {
 	}{
 		{"misspelled field", `{"paymnts": []}`, 2, `unknown field "paymnts"`},
 		{"not json", `payments`, 2, "Lỗi dữ liệu"},
-		{"two json values", `{"payments": []} {"payments": [{"date": "2026-01-01", "taxable_income": 1}]}`, 2, "more than one JSON value"},
+		{"two json values", `{"payments": []} {"payments": [{"date": "2026-01-01", "taxable_income": 1}]}`, 2, "data after the JSON object"},
+		{"trailing delimiter", `{"payments": []} }`, 2, "data after the JSON object"},
+		{"negative ins_base", `{"payments": [{"date": "2026-02-01", "gross": 30000000, "ins_base": -1}]}`, 1, "non-negative"},
 		{"bad date", `{"payments": [{"date": "2026-02-30", "gross": 1}]}`, 2, "Lỗi ở lần chi trả 1 (2026-02-30)"},
 		{"gross and payslip", `{"payments": [{"date": "2026-02-01", "gross": 30000000, "tax_withheld": 1}]}`, 2, "not both"},
 		{"payslip with a gross option", `{"payments": [{"date": "2026-12-20", "taxable_income": 30000000, "bonus": 20000000}]}`, 2, "not both"},
