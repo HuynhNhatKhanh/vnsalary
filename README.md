@@ -22,7 +22,8 @@
   - **July 01, 2026:** Base salary raised to 2,530,000 VND (Decree 161/2026/ND-CP), so the social & health insurance cap rises from 46.8M to 50.6M. Other parameters unchanged.
 - **Concurrency-Safe & Immutable:** `PolicyAt` returns deep copies of policies, preventing external modification of global slices. Input validation enforces bounded amounts (up to 10¹⁴ VND) and dependent limits (≤ 50) to prevent `int64` overflow.
 - **Comprehensive Employer Cost:** Computes mandatory employer contributions (Social 17.5%, Health 3%, Unemployment 1%) and total company cost.
-- **CLI Included:** Standalone command-line tool with human-readable formatting, policy diff comparison, and `--json` export.
+- **Annual PIT Finalization:** `Annual` settles a tax year from its payments (several employers, bonus months, months without income, late dependents) and returns the amount to pay or refund; personal deduction for 12 months, medical and tuition deductions from 2026 (Decree 253/2026/ND-CP Art. 48–49).
+- **CLI Included:** Standalone command-line tool with human-readable formatting, policy diff comparison, annual finalization from a JSON file, and `--json` export.
 
 ---
 
@@ -306,7 +307,7 @@ The library is verified with a comprehensive test suite:
 ```bash
 go test -cover ./...
 ```
-Statement coverage at v0.3.0: library **96.8%**, CLI **96.6%**.
+Statement coverage at v0.4.0: library **97.4%**, CLI **95.9%**.
 
 ---
 

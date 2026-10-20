@@ -22,7 +22,8 @@
   - **Mốc 01/07/2026:** Lương cơ sở tăng lên **2.530.000đ** (NĐ 161/2026/NĐ-CP) nên trần BHXH/BHYT tăng từ 46,8M lên **50,6M**. Các tham số khác giữ nguyên.
 - **An Toàn Concurrency & Bất Biến (Immutability):** `PolicyAt` trả về deep copy của struct chính sách, bảo vệ dữ liệu cấu hình toàn cục. Bổ sung kiểm tra chặn tràn số (`int64` overflow guard cho mức lương > 10¹⁴ VND) và chặn âm lương khi bảo hiểm vượt quá lương Gross.
 - **Bóc Tách Đầy Đủ Chi Phí Doanh Nghiệp (Employer Cost):** Tính toàn bộ bảo hiểm công ty đóng (BHXH 17.5%, BHYT 3%, BHTN 1%) và tổng ngân sách nhân sự thực tế.
-- **Tích Hợp Sẵn Công Cụ CLI:** Hỗ trợ tính dòng lệnh `gross`, `net`, `diff` so sánh 2024 vs 2026, hỗ trợ đặt cờ trước hoặc sau số tiền, xuất bảng đẹp và cờ `--json` để tích hợp pipeline.
+- **Quyết Toán Thuế TNCN Năm:** `Annual` quyết toán một năm từ các lần chi trả (nhiều công ty, tháng có thưởng, tháng không có thu nhập, đăng ký người phụ thuộc muộn) và trả về số còn phải nộp hoặc được hoàn; giảm trừ bản thân đủ 12 tháng, trừ chi phí y tế và giáo dục từ 2026 (NĐ 253/2026/NĐ-CP Điều 48–49).
+- **Tích Hợp Sẵn Công Cụ CLI:** Hỗ trợ tính dòng lệnh `gross`, `net`, `diff` so sánh 2024 vs 2026, `annual` quyết toán từ file JSON, hỗ trợ đặt cờ trước hoặc sau số tiền, xuất bảng đẹp và cờ `--json` để tích hợp pipeline.
 
 ---
 
@@ -307,7 +308,7 @@ BenchmarkNetToGross-16       111998         12749   ns/op       12920 B/op      
 ```bash
 go test -cover ./...
 ```
-Độ bao phủ code ở v0.3.0: thư viện **96,8%**, CLI **96,6%**.
+Độ bao phủ code ở v0.4.0: thư viện **97,4%**, CLI **95,9%**.
 
 ---
 
