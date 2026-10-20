@@ -77,6 +77,7 @@ type messages struct {
 	errReadFile   string
 	errBadInput   string
 	errPayment    string
+	errFlagUnused string
 }
 
 var msgs = map[string]messages{
@@ -117,6 +118,7 @@ Flags:
 		errReadFile:   "Lỗi đọc file %s: %v",
 		errBadInput:   "Lỗi dữ liệu trong %s: %v",
 		errPayment:    "Lỗi ở lần chi trả %d (%s): %v",
+		errFlagUnused: "Lỗi: lệnh %s không dùng cờ -%s",
 	},
 	"en": {
 		usage: `vnsalary — Vietnam Gross ↔ Net salary calculator
@@ -155,6 +157,7 @@ Flags:
 		errReadFile:   "Error reading %s: %v",
 		errBadInput:   "Invalid data in %s: %v",
 		errPayment:    "Error in payment %d (%s): %v",
+		errFlagUnused: "Error: the %s command does not use -%s",
 	},
 }
 
@@ -599,6 +602,16 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return errorf(stderr, 2, m.errBadDate, "--date", err)
 	}
 	if cmd == "flat" {
+		// 10% applies to the whole payment: other flags would be silently ignored.
+		var unused string
+		flags.Visit(func(f *flag.Flag) {
+			if unused == "" && f.Name != "date" && f.Name != "json" && f.Name != "lang" {
+				unused = f.Name
+			}
+		})
+		if unused != "" {
+			return errorf(stderr, 2, m.errFlagUnused, cmd, unused)
+		}
 		res, err := vnsalary.FlatWithholding(vnsalary.VND(amount), date)
 		if err != nil {
 			return errorf(stderr, 1, m.errCalc, err)

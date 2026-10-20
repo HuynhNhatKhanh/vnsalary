@@ -63,6 +63,8 @@ func TestRun_ExitCodesAndMessages(t *testing.T) {
 
 		{"flat ok", []string{"flat", "8000000", "--date", "2026-08-01"}, 0, "THỰC NHẬN: 7.200.000 đ", ""},
 		{"flat below threshold", []string{"flat", "4000000", "--date", "2026-08-01", "--lang", "en"}, 0, "Below the threshold", ""},
+		{"flat rejects unused flag", []string{"flat", "8000000", "--bonus", "1000000"}, 2, "", "lệnh flat không dùng cờ -bonus"},
+		{"flat rejects unused flag en", []string{"flat", "8000000", "-d", "1", "--lang", "en"}, 2, "", "the flat command does not use -d"},
 		{"flat negative", []string{"flat", "--", "-1"}, 2, "", "số tiền không hợp lệ"},
 		{"flat date before first policy", []string{"flat", "3000000", "--date", "2020-01-01"}, 1, "", "Lỗi:"},
 		{"annual ok", []string{"annual", "testdata/annual_job_change.json"}, 0, "ĐƯỢC HOÀN: 2.831.250 đ", ""},
