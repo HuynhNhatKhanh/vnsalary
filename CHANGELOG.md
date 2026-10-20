@@ -25,6 +25,11 @@ Entries that change computed amounts are marked **(results change)**.
 - `Policy.FlatWithholdingThreshold`.
 - `vnsalary flat <amount> [--date]`.
 
+### Fixed
+
+- CLI: an extra argument is now an error. Flags after it, as in
+  `gross 35000000 x --bonus 5000000`, were ignored without notice.
+
 ## [0.4.0] - 2026-10-20
 
 No change in any monthly computed amount. New API for annual finalization.

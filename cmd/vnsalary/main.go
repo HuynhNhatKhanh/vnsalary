@@ -78,6 +78,7 @@ type messages struct {
 	errBadInput   string
 	errPayment    string
 	errFlagUnused string
+	errExtraArgs  string
 }
 
 var msgs = map[string]messages{
@@ -119,6 +120,7 @@ Flags:
 		errBadInput:   "Lỗi dữ liệu trong %s: %v",
 		errPayment:    "Lỗi ở lần chi trả %d (%s): %v",
 		errFlagUnused: "Lỗi: lệnh %s không dùng cờ -%s",
+		errExtraArgs:  "Lỗi: tham số thừa: %s",
 	},
 	"en": {
 		usage: `vnsalary — Vietnam Gross ↔ Net salary calculator
@@ -158,6 +160,7 @@ Flags:
 		errBadInput:   "Invalid data in %s: %v",
 		errPayment:    "Error in payment %d (%s): %v",
 		errFlagUnused: "Error: the %s command does not use -%s",
+		errExtraArgs:  "Error: unexpected arguments: %s",
 	},
 }
 
@@ -535,8 +538,14 @@ func run(args []string, stdout, stderr io.Writer) int {
 		printUsage(stderr, lang)
 		return 2
 	}
-	if amountStr == "" && flags.NArg() > 0 {
-		amountStr = flags.Arg(0)
+	// flag stops at the first non-flag argument, so anything left over may
+	// hide flags after it ("gross 1 x --bonus 2"): reject it.
+	rest := flags.Args()
+	if amountStr == "" && len(rest) > 0 {
+		amountStr, rest = rest[0], rest[1:]
+	}
+	if len(rest) > 0 {
+		return errorf(stderr, 2, m.errExtraArgs, strings.Join(rest, " "))
 	}
 	if amountStr == "" {
 		return errorf(stderr, 2, m.errNoAmount, cmd)

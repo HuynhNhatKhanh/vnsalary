@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/HuynhNhatKhanh/vnsalary"
@@ -86,6 +87,9 @@ func runAnnual(args []string, stdout, stderr io.Writer, lang string) int {
 		fmt.Fprintf(stderr, m.errFlags+"\n", err)
 		printUsage(stderr, lang)
 		return 2
+	}
+	if flags.NArg() > 0 { // may hide flags after it, see run
+		return errorf(stderr, 2, m.errExtraArgs, strings.Join(flags.Args(), " "))
 	}
 	if path == "" {
 		return errorf(stderr, 2, m.errNoFile)
