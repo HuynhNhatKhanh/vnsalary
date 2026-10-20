@@ -6,6 +6,7 @@
 //	vnsalary gross <amount> [flags]   gross to net
 //	vnsalary net <amount> [flags]     net to gross
 //	vnsalary diff <amount> [flags]    compare net between two payment dates
+//	vnsalary flat <amount> [flags]    10% withholding (no labour contract or under 3 months)
 //	vnsalary annual <file.json>       annual PIT finalization of a tax year
 //	vnsalary version                  print the version
 //
@@ -76,6 +77,8 @@ type messages struct {
 	errReadFile   string
 	errBadInput   string
 	errPayment    string
+	errFlagUnused string
+	errExtraArgs  string
 }
 
 var msgs = map[string]messages{
@@ -86,6 +89,7 @@ Cách dùng:
   vnsalary gross <số_tiền> [flags]  Tính từ lương Gross sang Net
   vnsalary net <số_tiền> [flags]    Tính từ lương Net sang Gross
   vnsalary diff <số_tiền> [flags]   So sánh lương Net giữa 2 kỳ luật
+  vnsalary flat <số_tiền> [flags]   Khấu trừ 10% (không ký HĐLĐ hoặc HĐLĐ dưới 3 tháng)
   vnsalary annual <file.json>       Quyết toán thuế TNCN năm từ danh sách chi trả ('-' = stdin)
   vnsalary version                  In phiên bản
 
@@ -115,6 +119,8 @@ Flags:
 		errReadFile:   "Lỗi đọc file %s: %v",
 		errBadInput:   "Lỗi dữ liệu trong %s: %v",
 		errPayment:    "Lỗi ở lần chi trả %d (%s): %v",
+		errFlagUnused: "Lỗi: lệnh %s không dùng cờ -%s",
+		errExtraArgs:  "Lỗi: tham số thừa: %s",
 	},
 	"en": {
 		usage: `vnsalary — Vietnam Gross ↔ Net salary calculator
@@ -123,6 +129,7 @@ Usage:
   vnsalary gross <amount> [flags]   Convert gross salary to net
   vnsalary net <amount> [flags]     Convert net salary to gross
   vnsalary diff <amount> [flags]    Compare net salary between two policy periods
+  vnsalary flat <amount> [flags]    10% withholding (no labour contract, or one under 3 months)
   vnsalary annual <file.json>       Annual PIT finalization from a list of payments ('-' = stdin)
   vnsalary version                  Print the version
 
@@ -152,6 +159,8 @@ Flags:
 		errReadFile:   "Error reading %s: %v",
 		errBadInput:   "Invalid data in %s: %v",
 		errPayment:    "Error in payment %d (%s): %v",
+		errFlagUnused: "Error: the %s command does not use -%s",
+		errExtraArgs:  "Error: unexpected arguments: %s",
 	},
 }
 
@@ -334,6 +343,44 @@ func printWarnings(w io.Writer, warnings []vnsalary.Warning, lang string) {
 	}
 }
 
+func printFlat(w io.Writer, r vnsalary.FlatResult, lang string) {
+	if lang == "en" {
+		fmt.Fprintln(w, "=================================================================")
+		fmt.Fprintln(w, " 10% PIT WITHHOLDING (no labour contract, or one under 3 months)")
+		fmt.Fprintln(w, "-----------------------------------------------------------------")
+		fmt.Fprintf(w, " Payment:            %s\n", formatVND(r.Amount, lang))
+		fmt.Fprintf(w, " Threshold:          %s per payment\n", formatVND(r.Threshold, lang))
+		fmt.Fprintf(w, " Tax withheld (10%%): %s\n", formatVND(r.Withheld, lang))
+		fmt.Fprintln(w, "=================================================================")
+		fmt.Fprintf(w, " AMOUNT PAID OUT: %s\n", formatVND(r.Net, lang))
+		fmt.Fprintln(w, "=================================================================")
+		fmt.Fprintf(w, " Applied Policy: %s\n", r.Policy.Description)
+		if !r.Required {
+			fmt.Fprintln(w, " [i] Below the threshold: withholding is not required (from 2026-07-01 the payer may withhold 10% at the individual's request)")
+		}
+		return
+	}
+
+	// Default Vietnamese output
+	fmt.Fprintln(w, "=================================================================")
+	fmt.Fprintln(w, " KHẤU TRỪ THUẾ TNCN 10% (không ký HĐLĐ hoặc HĐLĐ dưới 3 tháng)")
+	fmt.Fprintln(w, "-----------------------------------------------------------------")
+	fmt.Fprintf(w, " Số tiền chi trả:        %s\n", formatVND(r.Amount, lang))
+	fmt.Fprintf(w, " Ngưỡng khấu trừ:        %s/lần\n", formatVND(r.Threshold, lang))
+	fmt.Fprintf(w, " Thuế khấu trừ (10%%):    %s\n", formatVND(r.Withheld, lang))
+	fmt.Fprintln(w, "=================================================================")
+	fmt.Fprintf(w, " THỰC NHẬN: %s\n", formatVND(r.Net, lang))
+	fmt.Fprintln(w, "=================================================================")
+	desc := r.Policy.DescriptionVI
+	if desc == "" {
+		desc = r.Policy.Description
+	}
+	fmt.Fprintf(w, " Áp dụng: %s\n", desc)
+	if !r.Required {
+		fmt.Fprintln(w, " [i] Dưới ngưỡng: không bắt buộc khấu trừ (từ 01/07/2026 vẫn được khấu trừ 10% nếu cá nhân yêu cầu)")
+	}
+}
+
 func printDiffTable(w io.Writer, amount int64, dFrom, dTo time.Time, resFrom, resTo vnsalary.Result, dependents, region int, lang string) {
 	diffNet := resTo.Net - resFrom.Net
 	diffTax := resTo.Tax - resFrom.Tax
@@ -421,7 +468,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	switch cmd {
-	case "gross", "net", "diff":
+	case "gross", "net", "diff", "flat":
 	case "annual":
 		return runAnnual(args[1:], stdout, stderr, lang)
 	default:
@@ -491,8 +538,14 @@ func run(args []string, stdout, stderr io.Writer) int {
 		printUsage(stderr, lang)
 		return 2
 	}
-	if amountStr == "" && flags.NArg() > 0 {
-		amountStr = flags.Arg(0)
+	// flag stops at the first non-flag argument, so anything left over may
+	// hide flags after it ("gross 1 x --bonus 2"): reject it.
+	rest := flags.Args()
+	if amountStr == "" && len(rest) > 0 {
+		amountStr, rest = rest[0], rest[1:]
+	}
+	if len(rest) > 0 {
+		return errorf(stderr, 2, m.errExtraArgs, strings.Join(rest, " "))
 	}
 	if amountStr == "" {
 		return errorf(stderr, 2, m.errNoAmount, cmd)
@@ -556,6 +609,29 @@ func run(args []string, stdout, stderr io.Writer) int {
 	date, err := parseDate(*dateStr)
 	if err != nil {
 		return errorf(stderr, 2, m.errBadDate, "--date", err)
+	}
+	if cmd == "flat" {
+		// 10% applies to the whole payment: other flags would be silently ignored.
+		var unused string
+		flags.Visit(func(f *flag.Flag) {
+			if unused == "" && f.Name != "date" && f.Name != "json" && f.Name != "lang" {
+				unused = f.Name
+			}
+		})
+		if unused != "" {
+			return errorf(stderr, 2, m.errFlagUnused, cmd, unused)
+		}
+		res, err := vnsalary.FlatWithholding(vnsalary.VND(amount), date)
+		if err != nil {
+			return errorf(stderr, 1, m.errCalc, err)
+		}
+		if *asJSON {
+			data, _ := json.MarshalIndent(res, "", "  ")
+			fmt.Fprintln(stdout, string(data))
+			return 0
+		}
+		printFlat(stdout, res, lang)
+		return 0
 	}
 	var res vnsalary.Result
 	if cmd == "gross" {

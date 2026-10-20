@@ -152,6 +152,22 @@ fmt.Println(res.Tax, res.Withheld, res.Balance) // Balance < 0: được hoàn
 
 Biểu thuế năm bằng biểu tháng × 12 (Luật 109/2025 Điều 9.2). Hỗ trợ kỳ tính thuế từ 2025.
 
+### 6. Khấu Trừ 10% (Không Ký HĐLĐ hoặc HĐLĐ Dưới 3 Tháng)
+
+Khoản chi trả cho cá nhân cư trú không ký hợp đồng lao động hoặc ký hợp đồng dưới 3 tháng bị khấu trừ 10% trên toàn bộ khoản chi, không trừ gia cảnh, khi khoản đó đạt ngưỡng của ngày chi trả:
+
+```go
+res, _ := vnsalary.FlatWithholding(8_000_000, time.Date(2026, 9, 10, 0, 0, 0, 0, time.UTC))
+fmt.Println(res.Withheld, res.Net) // 800000 7200000
+```
+
+| Ngày chi trả | Ngưỡng mỗi lần | Căn cứ |
+| :--- | :--- | :--- |
+| trước 01/07/2026 | 2.000.000đ | TT 111/2013 Điều 25.1.i |
+| từ 01/07/2026 | 5.000.000đ (dưới ngưỡng chỉ khấu trừ khi cá nhân yêu cầu) | NĐ 253/2026 Điều 50.2 |
+
+Số đã khấu trừ là tạm nộp: `res.Payment(date)` đưa vào `Annual`, thuế được hoàn nếu thu nhập cả năm thấp hơn mức giảm trừ. Chưa mô hình hóa: bản cam kết để tạm chưa khấu trừ, và bảo hiểm bắt buộc (tùy theo hợp đồng).
+
 ---
 
 ## 📊 Bảng Căn Cứ Pháp Lý (2024 vs 2026)
@@ -202,7 +218,7 @@ Văn bản luật quy định tỉ lệ và mức trần nhưng không quy đị
 vnsalary áp dụng cho **người lao động cư trú, hợp đồng lao động từ 3 tháng trở lên**. Hãy đọc các điểm sau trước khi dùng cho bảng lương thật:
 
 - **Các khoản miễn thuế được nhận như người dùng truyền vào.** `Extras.Overtime` phải là tiền làm thêm trong giới hạn giờ luật cho phép (phần vượt giới hạn chỉ để trong gross), và mức của `Extras.OtherExempt` (điện thoại, trang phục…) theo quy chế công ty; thư viện không kiểm các mức này.
-- **Chưa hỗ trợ:** hợp đồng dưới 3 tháng (khấu trừ 10%), người không cư trú (20%), người nước ngoài (không đóng BHTN). Khoản đã khấu trừ 10% vẫn đưa được vào `Annual`.
+- **Chưa hỗ trợ:** người không cư trú (20%), người nước ngoài (không đóng BHTN).
 - **Lương đóng bảo hiểm thấp hơn lương tối thiểu vùng vẫn được tính, kèm cảnh báo.** Người làm toàn thời gian phải được trả ít nhất mức này, nên `Result.Warnings` báo mã `insurance_salary_below_regional_minimum` (CLI in dòng `[!]`). Đây không phải lỗi vì hợp đồng bán thời gian có thể thấp hơn hợp pháp.
 - **Tỉ lệ TNLĐ-BNN của công ty cố định 0,5%**, nên BHXH phần công ty luôn là 17,5%. Một số doanh nghiệp đóng 0,3%.
 - **Kinh phí công đoàn 2% không nằm trong `Employer.TotalCost`.** Đây không phải bảo hiểm, nhưng công ty vẫn phải đóng.
@@ -248,6 +264,11 @@ Số tiền là tổng chi trả trong tháng; các cờ cho biết phần nào 
 ```bash
 vnsalary gross 50000000 --bonus 20000000 --date 2026-08-10        # hiện phần thuế do khoản thưởng
 vnsalary gross 55000000 --overtime 5000000 --meal 1500000 --other-exempt 800000 --date 2026-08-10
+```
+
+#### Khấu trừ 10%
+```bash
+vnsalary flat 8000000 --date 2026-09-10                         # khấu trừ 800.000đ; dưới ngưỡng thì báo rõ
 ```
 
 #### Quyết toán thuế TNCN năm

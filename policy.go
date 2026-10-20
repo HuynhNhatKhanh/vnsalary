@@ -39,6 +39,10 @@ type Policy struct {
 	// deductible at annual finalization (from tax period 2026); zero = not deductible.
 	HealthcareDeductionCap VND
 	EducationDeductionCap  VND
+
+	// Payments of this amount or more to a resident without a labour contract
+	// or with one under 3 months are withheld at 10% (see FlatWithholding).
+	FlatWithholdingThreshold VND
 }
 
 // MaxUnemploymentSalary returns the statutory cap for unemployment insurance (20 x regional minimum wage).
