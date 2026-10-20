@@ -175,3 +175,26 @@ func ExampleAnnual() {
 	// Tax withheld:       10898750
 	// Balance:            -2831250
 }
+
+// A one-off payment of 8,000,000 in September 2026 to someone without a labour
+// contract: 10% is withheld because the payment reaches the 5,000,000
+// threshold. With no other income in the year, finalization refunds it.
+func ExampleFlatWithholding() {
+	paid := time.Date(2026, 9, 10, 0, 0, 0, 0, time.UTC)
+	res, err := vnsalary.FlatWithholding(8_000_000, paid)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("Withheld:", res.Withheld, "Net:", res.Net)
+
+	annual, err := vnsalary.Annual(2026, []vnsalary.Payment{res.Payment(paid)}, vnsalary.AnnualOptions{})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("Balance at finalization:", annual.Balance)
+	// Output:
+	// Withheld: 800000 Net: 7200000
+	// Balance at finalization: -800000
+}

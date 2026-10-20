@@ -14,6 +14,17 @@ Entries that change computed amounts are marked **(results change)**.
 
 ## [Unreleased]
 
+### Added
+
+- `FlatWithholding`: the 10% PIT withheld from a payment to a resident
+  without a labour contract or with one under 3 months, from 2,000,000 per
+  payment (Circular 111/2013/TT-BTC Art. 25.1.i), and from 5,000,000 for
+  payments from 2026-07-01 (Decree 253/2026/NĐ-CP Art. 50.2)
+  ([#7](https://github.com/HuynhNhatKhanh/vnsalary/issues/7)).
+  `FlatResult.Payment` feeds the withholding into `Annual`.
+- `Policy.FlatWithholdingThreshold`.
+- `vnsalary flat <amount> [--date]`.
+
 ## [0.4.0] - 2026-10-20
 
 No change in any monthly computed amount. New API for annual finalization.

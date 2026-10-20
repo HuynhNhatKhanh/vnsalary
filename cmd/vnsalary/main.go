@@ -6,6 +6,7 @@
 //	vnsalary gross <amount> [flags]   gross to net
 //	vnsalary net <amount> [flags]     net to gross
 //	vnsalary diff <amount> [flags]    compare net between two payment dates
+//	vnsalary flat <amount> [flags]    10% withholding (no labour contract or under 3 months)
 //	vnsalary annual <file.json>       annual PIT finalization of a tax year
 //	vnsalary version                  print the version
 //
@@ -86,6 +87,7 @@ Cách dùng:
   vnsalary gross <số_tiền> [flags]  Tính từ lương Gross sang Net
   vnsalary net <số_tiền> [flags]    Tính từ lương Net sang Gross
   vnsalary diff <số_tiền> [flags]   So sánh lương Net giữa 2 kỳ luật
+  vnsalary flat <số_tiền> [flags]   Khấu trừ 10% (không ký HĐLĐ hoặc HĐLĐ dưới 3 tháng)
   vnsalary annual <file.json>       Quyết toán thuế TNCN năm từ danh sách chi trả ('-' = stdin)
   vnsalary version                  In phiên bản
 
@@ -123,6 +125,7 @@ Usage:
   vnsalary gross <amount> [flags]   Convert gross salary to net
   vnsalary net <amount> [flags]     Convert net salary to gross
   vnsalary diff <amount> [flags]    Compare net salary between two policy periods
+  vnsalary flat <amount> [flags]    10% withholding (no labour contract, or one under 3 months)
   vnsalary annual <file.json>       Annual PIT finalization from a list of payments ('-' = stdin)
   vnsalary version                  Print the version
 
@@ -334,6 +337,44 @@ func printWarnings(w io.Writer, warnings []vnsalary.Warning, lang string) {
 	}
 }
 
+func printFlat(w io.Writer, r vnsalary.FlatResult, lang string) {
+	if lang == "en" {
+		fmt.Fprintln(w, "=================================================================")
+		fmt.Fprintln(w, " 10% PIT WITHHOLDING (no labour contract, or one under 3 months)")
+		fmt.Fprintln(w, "-----------------------------------------------------------------")
+		fmt.Fprintf(w, " Payment:            %s\n", formatVND(r.Amount, lang))
+		fmt.Fprintf(w, " Threshold:          %s per payment\n", formatVND(r.Threshold, lang))
+		fmt.Fprintf(w, " Tax withheld (10%%): %s\n", formatVND(r.Withheld, lang))
+		fmt.Fprintln(w, "=================================================================")
+		fmt.Fprintf(w, " AMOUNT PAID OUT: %s\n", formatVND(r.Net, lang))
+		fmt.Fprintln(w, "=================================================================")
+		fmt.Fprintf(w, " Applied Policy: %s\n", r.Policy.Description)
+		if !r.Required {
+			fmt.Fprintln(w, " [i] Below the threshold: withholding is not required (from 2026-07-01 the payer may withhold 10% at the individual's request)")
+		}
+		return
+	}
+
+	// Default Vietnamese output
+	fmt.Fprintln(w, "=================================================================")
+	fmt.Fprintln(w, " KHẤU TRỪ THUẾ TNCN 10% (không ký HĐLĐ hoặc HĐLĐ dưới 3 tháng)")
+	fmt.Fprintln(w, "-----------------------------------------------------------------")
+	fmt.Fprintf(w, " Số tiền chi trả:        %s\n", formatVND(r.Amount, lang))
+	fmt.Fprintf(w, " Ngưỡng khấu trừ:        %s/lần\n", formatVND(r.Threshold, lang))
+	fmt.Fprintf(w, " Thuế khấu trừ (10%%):    %s\n", formatVND(r.Withheld, lang))
+	fmt.Fprintln(w, "=================================================================")
+	fmt.Fprintf(w, " THỰC NHẬN: %s\n", formatVND(r.Net, lang))
+	fmt.Fprintln(w, "=================================================================")
+	desc := r.Policy.DescriptionVI
+	if desc == "" {
+		desc = r.Policy.Description
+	}
+	fmt.Fprintf(w, " Áp dụng: %s\n", desc)
+	if !r.Required {
+		fmt.Fprintln(w, " [i] Dưới ngưỡng: không bắt buộc khấu trừ (từ 01/07/2026 vẫn được khấu trừ 10% nếu cá nhân yêu cầu)")
+	}
+}
+
 func printDiffTable(w io.Writer, amount int64, dFrom, dTo time.Time, resFrom, resTo vnsalary.Result, dependents, region int, lang string) {
 	diffNet := resTo.Net - resFrom.Net
 	diffTax := resTo.Tax - resFrom.Tax
@@ -421,7 +462,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	switch cmd {
-	case "gross", "net", "diff":
+	case "gross", "net", "diff", "flat":
 	case "annual":
 		return runAnnual(args[1:], stdout, stderr, lang)
 	default:
@@ -556,6 +597,19 @@ func run(args []string, stdout, stderr io.Writer) int {
 	date, err := parseDate(*dateStr)
 	if err != nil {
 		return errorf(stderr, 2, m.errBadDate, "--date", err)
+	}
+	if cmd == "flat" {
+		res, err := vnsalary.FlatWithholding(vnsalary.VND(amount), date)
+		if err != nil {
+			return errorf(stderr, 1, m.errCalc, err)
+		}
+		if *asJSON {
+			data, _ := json.MarshalIndent(res, "", "  ")
+			fmt.Fprintln(stdout, string(data))
+			return 0
+		}
+		printFlat(stdout, res, lang)
+		return 0
 	}
 	var res vnsalary.Result
 	if cmd == "gross" {

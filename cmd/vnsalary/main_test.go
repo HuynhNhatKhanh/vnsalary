@@ -61,6 +61,10 @@ func TestRun_ExitCodesAndMessages(t *testing.T) {
 		{"extras exceed gross", []string{"gross", "10000000", "--bonus", "20000000", "--date", "2026-01-15"}, 1, "", "extras exceed gross"},
 		{"diff later period invalid en", []string{"diff", "35000000", "--to", "2020-01-01", "--lang", "en"}, 1, "", "Error in later period"},
 
+		{"flat ok", []string{"flat", "8000000", "--date", "2026-08-01"}, 0, "THỰC NHẬN: 7.200.000 đ", ""},
+		{"flat below threshold", []string{"flat", "4000000", "--date", "2026-08-01", "--lang", "en"}, 0, "Below the threshold", ""},
+		{"flat negative", []string{"flat", "--", "-1"}, 2, "", "số tiền không hợp lệ"},
+		{"flat date before first policy", []string{"flat", "3000000", "--date", "2020-01-01"}, 1, "", "Lỗi:"},
 		{"annual ok", []string{"annual", "testdata/annual_job_change.json"}, 0, "ĐƯỢC HOÀN: 2.831.250 đ", ""},
 		{"annual file after flags", []string{"annual", "--lang", "en", "testdata/annual_job_change.json"}, 0, "REFUNDABLE: 2,831,250 VND", ""},
 		{"annual missing file", []string{"annual"}, 2, "", "thiếu file danh sách chi trả"},
@@ -190,6 +194,8 @@ func TestRun_Golden(t *testing.T) {
 		{"diff_en.golden", []string{"diff", "60000000", "--from", "2026-06-30", "--to", "2026-07-01", "--lang", "en"}},
 		{"extras_vi.golden", []string{"gross", "55000000", "-d", "1", "--overtime", "5000000", "--meal", "1500000", "--other-exempt", "800000", "--bonus", "10000000", "--date", "2026-08-10"}},
 		{"extras_en.golden", []string{"gross", "50000000", "--bonus", "20000000", "--date", "2026-08-10", "--lang", "en"}},
+		{"flat_vi.golden", []string{"flat", "12345675", "--date", "2026-08-15"}},
+		{"flat_en.golden", []string{"flat", "3000000", "--date", "2026-06-30", "--lang", "en"}},
 		{"annual_vi.golden", []string{"annual", "testdata/annual_job_change.json"}},
 		{"annual_en.golden", []string{"annual", "testdata/annual_deductions.json", "--lang", "en"}},
 	}

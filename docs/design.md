@@ -34,8 +34,9 @@ disagreed between sources. A parameter set with citations is useful in itself.
 | PIT | progressive by bracket: 7 brackets until 2025, 5 brackets from 2026 |
 | Employer cost | BHXH 17.5% (incl. 0.5% occupational accident), BHYT 3%, BHTN 1% |
 | Policy by date | `Options.Date` selects the parameter set |
-| CLI | `gross`, `net`, `diff`, `annual` (JSON file of payments), `--json`, `--lang vi\|en` |
+| CLI | `gross`, `net`, `diff`, `flat`, `annual` (JSON file of payments), `--json`, `--lang vi\|en` |
 | Extras (v0.3.0) | overtime, cash meal allowance, other exempt allowances and bonus inside gross; exempt income, insurance salary and the tax caused by the bonus |
+| 10% withholding (v0.5.0) | `FlatWithholding`: 10% of a payment to a resident without a labour contract or with one under 3 months, from the threshold of the payment date (2M, 5M from 2026-07-01); `vnsalary flat` |
 | Annual finalization (v0.4.0) | yearly tax on all payments of a tax year vs. the tax withheld; 12 months of personal deduction, dependent months, charity, medical and tuition deductions (§8) |
 
 **Later:** see the roadmap (§13). Known simplifications of v0.1.0 are listed
@@ -324,6 +325,8 @@ and a real test of how pleasant the API is.
 | 2026-10-20 | `Annual` takes payments (taxable income, insurance, tax withheld), not gross ([#6](https://github.com/HuynhNhatKhanh/vnsalary/issues/6)) | that is what payslips and withholding certificates show; several employers and 10% withholding need no extra options |
 | 2026-10-20 | Yearly schedule = monthly limits × 12, same rounding as monthly | the law's yearly column; the same convention keeps a steady salary's balance within a few VND |
 | 2026-10-20 | First tax year 2025 | the policy data starts on 2024-07-01, so 2024 is not covered in full |
+| 2026-10-20 | 10% threshold 5M from 2026-07-01, 2M before ([#7](https://github.com/HuynhNhatKhanh/vnsalary/issues/7)) | withholding is done at payment time under the rules then in force; Decree 253/2026 took effect on 2026-07-01 (see §14 for the reading of Art. 69.1.a) |
+| 2026-10-20 | `FlatWithholding` computes tax only; below the threshold `Withheld` is 0 | withholding on request and the deferral commitment are the individual's choice; insurance depends on the contract, not on the tax rule |
 
 ## 12. Known gaps
 
@@ -348,7 +351,9 @@ how often users are likely to need it:
   ([#6](https://github.com/HuynhNhatKhanh/vnsalary/issues/6)): uneven income,
   job changes and late dependents make monthly withholding differ from the
   yearly tax.
-- **v0.5.0**: contracts under 3 months, non-residents, foreign employees.
+- **v0.5.0**: 10% withholding for contracts under 3 months
+  ([#7](https://github.com/HuynhNhatKhanh/vnsalary/issues/7)), non-residents,
+  foreign employees.
 
 Law changes are released as soon as the document is issued, outside this
 order (for example the 2027 regional minimum wage,
@@ -368,6 +373,11 @@ outside these milestones.
 - **Overtime beyond the legal hour limits** is taxable (Decree 253/2026
   Art. 26.3). How the excess is measured (monthly vs. yearly limits) is not
   settled in the sources found; the library leaves it to the caller.
+- **Start of the 5,000,000 threshold.** Decree 253/2026 took effect on
+  2026-07-01, but Art. 69.1.a applies its rules on residents' salary income
+  from tax period 2026. The library uses 2026-07-01 for withholding, which
+  happens at payment time; the choice only moves tax between withholding and
+  finalization, not the year's total.
 - **Amending law 09/2026/QH16** (April 2026) changes the PIT revenue threshold
   for business income; whether it touches Articles 9–10 of Law 109/2025 (salary
   brackets and deductions) has not been confirmed from the full text.
@@ -398,4 +408,5 @@ Checked against the full texts or official publications on 2026-10-13; the rows 
 | Medical up to 23M and tuition up to 24M per year deductible from tax period 2026 | Decree 253/2026/NĐ-CP Art. 49.2, Art. 69.1.a |
 | Insurance and charity deducted in the year paid | Decree 253/2026/NĐ-CP Art. 46.2.a, Art. 49.5 |
 | Yearly schedule: monthly limits × 12 | Law 109/2025/QH15 Art. 9.2 |
-| 10% withholding for contracts under 3 months from 5,000,000 per payment | Decree 253/2026/NĐ-CP Art. 50.2 |
+| 10% withholding for contracts under 3 months from 5,000,000 per payment; below it on request | Decree 253/2026/NĐ-CP Art. 50.2 |
+| 10% withholding from 2,000,000 per payment before 2026-07-01 | Circular 111/2013/TT-BTC Art. 25.1.i |
