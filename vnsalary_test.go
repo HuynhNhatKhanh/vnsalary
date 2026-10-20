@@ -3,6 +3,7 @@ package vnsalary
 import (
 	"encoding/json"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -549,6 +550,16 @@ func TestPoliciesInvariants(t *testing.T) {
 		// 5. Each policy must declare statutory decree sources.
 		if len(p.Ref.Sources) == 0 {
 			t.Errorf("policy %s has no sources", p.Ref.EffectiveFrom)
+		}
+		// 6. Deductions and brackets are set per tax period: Annual uses the
+		// policy in force on 1 January for the whole year.
+		if year := p.EffectiveFrom.Year(); year >= FirstAnnualYear {
+			jan, _ := policyAt(date(year, 1, 1))
+			if p.PersonalDeduction != jan.PersonalDeduction || p.DependentDeduction != jan.DependentDeduction ||
+				p.HealthcareDeductionCap != jan.HealthcareDeductionCap || p.EducationDeductionCap != jan.EducationDeductionCap ||
+				!slices.Equal(p.Brackets, jan.Brackets) {
+				t.Errorf("policy %s changes deductions or brackets within tax year %d", p.Ref.EffectiveFrom, year)
+			}
 		}
 	}
 }

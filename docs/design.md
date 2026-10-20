@@ -36,9 +36,10 @@ disagreed between sources. A parameter set with citations is useful in itself.
 | Policy by date | `Options.Date` selects the parameter set |
 | CLI | `gross`, `net`, `diff`, `--json`, `--lang vi\|en` |
 | Extras (v0.3.0) | overtime, cash meal allowance, other exempt allowances and bonus inside gross; exempt income, insurance salary and the tax caused by the bonus |
+| Annual finalization (v0.4.0) | yearly tax on all payments of a tax year vs. the tax withheld; 12 months of personal deduction, dependent months, charity, medical and tuition deductions (§8) |
 
-**Later:** see the roadmap (§12). Known simplifications of v0.1.0 are listed
-in §11.
+**Later:** see the roadmap (§13). Known simplifications of v0.1.0 are listed
+in §12.
 
 **Out of scope:** other PIT income types (securities, rentals, ESOP),
 persistence, user accounts.
@@ -209,14 +210,65 @@ unemployment cap in every region (50.6M vs. at least 74M today);
 `TestPoliciesInvariants` fails if a new policy breaks that, or the ordering,
 the 20× cap, increasing brackets, the 35% top rate, or missing sources.
 
-## 8. Testing
+## 8. Annual finalization
+
+`Annual(year, payments, opts)` settles the salary PIT of a resident individual
+for one tax year (quyết toán thuế TNCN).
+
+1. **Payments.** Each `Payment` is what a payslip or a withholding
+   certificate shows: taxable income, compulsory insurance and the tax
+   withheld. `Result.Payment(date)` converts a `GrossToNet` result. A payment
+   belongs to the tax year of its payment date (cash basis, §4); a payment
+   dated in another year is an error, not silently dropped. Payments from all
+   payers go in, including those withheld at the 10% flat rate.
+2. **Deductions.**
+   - Personal: 12 × the monthly deduction, whatever the months worked
+     (Decree 253/2026/NĐ-CP Art. 48.1.b; Circular 111/2013/TT-BTC Art. 9.1.c.1
+     before 2026).
+   - Dependents: `DependentMonths` × the monthly deduction. The caller counts
+     each dependent from the month the duty of support arose, which may be
+     earlier than the registration (Art. 48.2.a).
+   - Charity (Art. 49.1), medical expenses up to 23,000,000 and tuition up to
+     24,000,000 per year (Art. 49.2), from tax period 2026 (Art. 69.1.a).
+     Before 2026 medical and tuition expenses are ignored with the warning
+     `health_education_not_deductible`.
+3. **Tax.** Assessable income = taxable income − insurance − deductions, not
+   below zero. The yearly schedule is the monthly one with every limit × 12
+   (Law 109/2025/QH15 Art. 9.2: 120 / 360 / 720 / 1,200 million; before 2026
+   60 / 120 / 216 / 384 / 624 / 960 million), rounded as in §6.
+4. **Balance** = tax − withheld: positive is still to pay, negative is
+   refundable.
+
+**One policy per year.** Deductions and brackets are set per tax period, so
+the policy in force on 1 January applies to the whole year.
+`TestPoliciesInvariants` fails if a policy changes them within a year. The
+base salary change on 2026-07-01 only changes insurance amounts, which arrive
+inside the payments.
+
+**Why the balance is not zero.** With the same salary every month the yearly
+tax equals the withholding up to rounding (at most 6 VND per bracket; tested).
+It differs when income is uneven (a bonus month is withheld at its monthly
+bracket), when the taxpayer changed employers or did not work the whole year
+(the personal deduction still counts 12 months), when dependents were
+registered late, or when charity, medical and tuition deductions are claimed.
+
+**Not covered:** voluntary pension and life insurance deductions
+(Art. 46.2.a), tax reductions for disasters and serious illness (Art. 40),
+the month-based personal deduction of foreigners arriving or leaving during
+the year (Art. 48.1.c), and who must or may file (Art. 51). Claiming the
+Art. 49 deductions means the taxpayer files personally instead of
+authorizing the employer (Art. 51.3); the library computes amounts and does
+not decide filing obligations.
+
+## 9. Testing
 
 | Layer | What it proves |
 |---|---|
 | table tests | brackets, caps, regions, dependents, ±1 VND around every bracket limit, dates before/on/after each policy change |
 | golden data (`testdata/golden.json`) | 36 cases with `source`, `verified_at`, `notes`; 12 matched against TopCV; 11 odd amounts pin each insurance item and the tax rounding; 9 cover overtime, allowances and bonuses |
+| annual golden data (`testdata/annual_golden.json`) | 4 finalization cases (job change, December bonus, steady 2025 salary, 2026 deductions) computed by hand and by an independent script; `ExampleAnnual` reproduces the job-change case through `GrossToNet` |
 | independent reference | expected values for odd amounts come from a separate implementation with exact fractions, not from vnsalary |
-| properties | `Net(NetToGross(n)) == n`; `NetToGross(Net(g)).Gross ≤ g` and minimal; net steps of 0 or 1 |
+| properties | `Net(NetToGross(n)) == n`; `NetToGross(Net(g)).Gross ≤ g` and minimal; net steps of 0 or 1; a steady salary's yearly tax equals its withholding up to rounding |
 | invariants | `TestPoliciesInvariants` on the policy table |
 | fuzzing | `FuzzGrossToNet_NetToGross` on arbitrary amounts and options |
 | CLI | every command, flag spelling, language and exit code, with output snapshots |
@@ -226,7 +278,7 @@ Golden cases are labelled honestly: cases not yet compared with an external
 calculator say so in `source`. Comparing them with two public calculators is
 a release task, recorded by updating `source` and `verified_at`.
 
-## 9. Repository layout
+## 10. Repository layout
 
 The layout follows the Go team's
 [Organizing a Go module](https://go.dev/doc/modules/layout) and common
@@ -235,8 +287,8 @@ at the root, the CLI in `cmd/`, no `pkg/`.
 
 ```
 vnsalary/
-├── doc.go, vnsalary.go, policy.go, policies.go, inverse.go, rounding.go, errors.go
-├── *_test.go, example_test.go, testdata/golden.json
+├── doc.go, vnsalary.go, annual.go, policy.go, policies.go, inverse.go, rounding.go, errors.go
+├── *_test.go, example_test.go, testdata/golden.json, testdata/annual_golden.json
 ├── cmd/vnsalary/            CLI (stdlib flag), tests and output snapshots
 ├── docs/design.md           this document
 ├── .github/                 CI workflow, issue templates
@@ -247,7 +299,7 @@ The web demo will be a separate repository, `vnsalary-web`, importing the
 library like any user: no sub-module tags, no AWS dependencies in the library,
 and a real test of how pleasant the API is.
 
-## 10. Decisions
+## 11. Decisions
 
 | Date | Decision | Reason |
 |---|---|---|
@@ -269,8 +321,11 @@ and a real test of how pleasant the API is.
 | 2026-10-15 | Meal cap 730,000 before 2026-07-01, flagged unverified | the reference circular was repealed and no replacement figure was found; computing with a warning beats rejecting historical payrolls |
 | 2026-10-15 | `Result.Exempt` is a pointer, `BonusTax` omitempty | JSON stays identical to v0.2.0 when no extras are given |
 | 2026-10-15 | Insurance salary below the regional minimum is a warning, not an error ([#5](https://github.com/HuynhNhatKhanh/vnsalary/issues/5)) | the legal floor of the social insurance salary is the reference level (Law 41/2024/QH15 Art. 31.1); the regional minimum binds full-time pay (Labour Code 2019 Art. 90.2), so part-time contracts can legally be lower. Warnings never change amounts |
+| 2026-10-20 | `Annual` takes payments (taxable income, insurance, tax withheld), not gross ([#6](https://github.com/HuynhNhatKhanh/vnsalary/issues/6)) | that is what payslips and withholding certificates show; several employers and 10% withholding need no extra options |
+| 2026-10-20 | Yearly schedule = monthly limits × 12, same rounding as monthly | the law's yearly column; the same convention keeps a steady salary's balance within a few VND |
+| 2026-10-20 | First tax year 2025 | the policy data starts on 2024-07-01, so 2024 is not covered in full |
 
-## 11. Known gaps
+## 12. Known gaps
 
 Simplifications in v0.1.0 that affect real payrolls are listed under
 "Limitations" in the README. Those with a planned fix are tracked as issues:
@@ -280,7 +335,7 @@ trade union fee ([#11](https://github.com/HuynhNhatKhanh/vnsalary/issues/11)).
 The region is the place of work; that is a documentation point, not a gap in
 the calculation.
 
-## 12. Roadmap
+## 13. Roadmap
 
 Planned work is tracked as GitHub issues grouped by
 [milestone](https://github.com/HuynhNhatKhanh/vnsalary/milestones), ordered by
@@ -289,8 +344,10 @@ how often users are likely to need it:
 - **v0.2.0** (released): warnings for inputs worth checking, starting with an
   insurance salary below the regional minimum wage.
 - **v0.3.0** (released): tax-exempt income and bonuses, so real payslips can be computed.
-- **v0.4.0**: annual PIT finalization (2026 changed brackets and base salary
-  within the year).
+- **v0.4.0**: annual PIT finalization
+  ([#6](https://github.com/HuynhNhatKhanh/vnsalary/issues/6)): uneven income,
+  job changes and late dependents make monthly withholding differ from the
+  yearly tax.
 - **v0.5.0**: contracts under 3 months, non-residents, foreign employees.
 
 Law changes are released as soon as the document is issued, outside this
@@ -300,7 +357,7 @@ order (for example the 2027 regional minimum wage,
 A web demo (`vnsalary-web`, a separate repository) and CLI binaries are planned
 outside these milestones.
 
-## 13. Open questions
+## 14. Open questions
 
 - **Insurance month vs. payment date.** §4 uses one date for both. If users
   need it, `Options` could take a separate insurance month.
@@ -315,9 +372,9 @@ outside these milestones.
   for business income; whether it touches Articles 9–10 of Law 109/2025 (salary
   brackets and deductions) has not been confirmed from the full text.
 
-## 14. Legal sources checked
+## 15. Legal sources checked
 
-Checked against the full texts or official publications on 2026-10-13; the rows on overtime, allowances, bonuses and the insurance salary on 2026-10-15.
+Checked against the full texts or official publications on 2026-10-13; the rows on overtime, allowances, bonuses and the insurance salary on 2026-10-15; the rows on annual finalization and 10% withholding on 2026-10-20 against Decree 253/2026/NĐ-CP in the Official Gazette (Công báo) No. 402 of 2026-07-16.
 
 | Fact | Source |
 |---|---|
@@ -336,3 +393,9 @@ Checked against the full texts or official publications on 2026-10-13; the rows 
 | Phone, uniform and similar allowances taxable only above the CIT-deductible level | Decree 253/2026/NĐ-CP Art. 8.2.đ |
 | Bonuses taxable in the month paid, progressive withholding | Decree 253/2026/NĐ-CP Art. 8.2.i, 46.3, 50.1–2 |
 | Insurance salary = wage + allowances + regular, stable additions | Law 41/2024/QH15 Art. 31.1.b; Decree 158/2025/NĐ-CP Art. 7.1 |
+| Personal deduction counts 12 months at finalization | Decree 253/2026/NĐ-CP Art. 48.1.b; Circular 111/2013/TT-BTC Art. 9.1.c.1 (amended by Circular 92/2015/TT-BTC Art. 25.6) before 2026 |
+| Dependents count from the month the duty of support arose | Decree 253/2026/NĐ-CP Art. 48.2.a |
+| Medical up to 23M and tuition up to 24M per year deductible from tax period 2026 | Decree 253/2026/NĐ-CP Art. 49.2, Art. 69.1.a |
+| Insurance and charity deducted in the year paid | Decree 253/2026/NĐ-CP Art. 46.2.a, Art. 49.5 |
+| Yearly schedule: monthly limits × 12 | Law 109/2025/QH15 Art. 9.2 |
+| 10% withholding for contracts under 3 months from 5,000,000 per payment | Decree 253/2026/NĐ-CP Art. 50.2 |

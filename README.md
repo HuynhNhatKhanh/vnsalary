@@ -125,6 +125,32 @@ fmt.Println(result.Exempt.Total, result.BonusTax)   // exempt amount; tax caused
 
 Overtime and bonuses vary month to month, so they are outside the salary "paid regularly and stably" that insurance is based on (Law 41/2024 Art. 31.1.b). If your contract also excludes the meal or other allowances, set `InsuranceBase`. `NetToGross` holds the extras fixed and returns the smallest total gross.
 
+### 5. Annual PIT Finalization
+
+Monthly withholding and the yearly tax differ when income is uneven, when you changed employers or did not work the whole year (the personal deduction still counts 12 months), or when dependents were registered late. `Annual` computes the yearly tax and what is left to pay or refund:
+
+```go
+var payments []vnsalary.Payment
+for month := 1; month <= 12; month++ {
+	paid := time.Date(2026, time.Month(month), 28, 0, 0, 0, 0, time.UTC)
+	r, _ := vnsalary.GrossToNet(30_000_000, vnsalary.Options{Region: vnsalary.Region1, Dependents: 1, Date: paid})
+	payments = append(payments, r.Payment(paid)) // or fill Payment from a payslip
+}
+res, _ := vnsalary.Annual(2026, payments, vnsalary.AnnualOptions{
+	DependentMonths: 12,         // one dependent for the whole year
+	Healthcare:      10_000_000, // deductible from 2026, up to 23M/year
+})
+fmt.Println(res.Tax, res.Withheld, res.Balance) // Balance < 0: refundable
+```
+
+| Deduction | Amount | Basis |
+| :--- | :--- | :--- |
+| Personal | 12 × monthly, whatever the months worked | Decree 253/2026 Art. 48.1.b |
+| Dependents | `DependentMonths` × monthly, from the month the duty of support arose | Decree 253/2026 Art. 48.2.a |
+| Charity, medical (≤ 23M), tuition (≤ 24M) | per year, from tax period 2026; claiming them means filing yourself | Decree 253/2026 Art. 49, 51.3 |
+
+The yearly schedule is the monthly one × 12 (Law 109/2025 Art. 9.2). Supported tax years: 2025 onwards.
+
 ---
 
 ## 📊 Legal Reference & Policy Comparison
@@ -173,7 +199,7 @@ The legal texts set rates and caps but no rounding step, and calculators differ 
 vnsalary covers **resident employees on labour contracts of 3 months or more**. Check these before relying on it for a real payroll:
 
 - **Exempt allowances are taken as given.** `Extras.Overtime` must be pay for hours within the legal limits (pay for extra hours belongs in gross only), and the limits of `Extras.OtherExempt` (phone, uniform, …) follow your employer's regulation; the library does not check them.
-- **Not covered:** annual PIT finalization, contracts under 3 months (10% withholding), non-residents (20%), foreign employees (no unemployment insurance).
+- **Not covered:** contracts under 3 months (10% withholding), non-residents (20%), foreign employees (no unemployment insurance). Payments withheld at 10% can still be passed to `Annual`.
 - **An insurance salary below the regional minimum wage is computed as given, with a warning.** A full-time employee must be paid at least that minimum, so `Result.Warnings` reports code `insurance_salary_below_regional_minimum` (the CLI prints it with `[!]`). It is not an error because part-time contracts can legally be lower.
 - **Employer accident insurance is fixed at 0.5%**, so employer social insurance is always 17.5%. Some employers pay 0.3%.
 - **The 2% trade union fee is not in `Employer.TotalCost`.** It is not insurance, but the employer pays it.

@@ -1,0 +1,339 @@
+[
+  {
+    "description": "2026 - changed employer: 40M Jan-Jun, no income in July, 25M Aug-Dec; 12 months of personal deduction",
+    "year": 2026,
+    "dependent_months": 0,
+    "payments": [
+      {
+        "date": "2026-01-31",
+        "taxable_income": 40000000,
+        "insurance": 4200000,
+        "tax_withheld": 1530000
+      },
+      {
+        "date": "2026-02-28",
+        "taxable_income": 40000000,
+        "insurance": 4200000,
+        "tax_withheld": 1530000
+      },
+      {
+        "date": "2026-03-31",
+        "taxable_income": 40000000,
+        "insurance": 4200000,
+        "tax_withheld": 1530000
+      },
+      {
+        "date": "2026-04-30",
+        "taxable_income": 40000000,
+        "insurance": 4200000,
+        "tax_withheld": 1530000
+      },
+      {
+        "date": "2026-05-31",
+        "taxable_income": 40000000,
+        "insurance": 4200000,
+        "tax_withheld": 1530000
+      },
+      {
+        "date": "2026-06-30",
+        "taxable_income": 40000000,
+        "insurance": 4200000,
+        "tax_withheld": 1530000
+      },
+      {
+        "date": "2026-08-31",
+        "taxable_income": 25000000,
+        "insurance": 2625000,
+        "tax_withheld": 343750
+      },
+      {
+        "date": "2026-09-30",
+        "taxable_income": 25000000,
+        "insurance": 2625000,
+        "tax_withheld": 343750
+      },
+      {
+        "date": "2026-10-31",
+        "taxable_income": 25000000,
+        "insurance": 2625000,
+        "tax_withheld": 343750
+      },
+      {
+        "date": "2026-11-30",
+        "taxable_income": 25000000,
+        "insurance": 2625000,
+        "tax_withheld": 343750
+      },
+      {
+        "date": "2026-12-31",
+        "taxable_income": 25000000,
+        "insurance": 2625000,
+        "tax_withheld": 343750
+      }
+    ],
+    "expected_assessable": 140675000,
+    "expected_tax": 8067500,
+    "expected_balance": -2831250,
+    "notes": "Thu nhập chịu thuế 365.000.000, bảo hiểm 38.325.000, giảm trừ 186.000.000 (15,5M x 12, NĐ 253/2026 Điều 48.1.b) -> TNTT 140.675.000. Thuế năm = 120M x 5% + 20.675M x 10% = 8.067.500. Đã khấu trừ 6 x 1.530.000 + 5 x 343.750 = 10.898.750 -> hoàn 2.831.250",
+    "source": "Tính tay theo Luật Thuế TNCN 109/2025 Điều 9.2 (biểu năm), NĐ 253/2026 Điều 48-49 / TT 111/2013 Điều 9.1.c.1 (giảm trừ đủ 12 tháng); đối chiếu bằng script Python độc lập — CHƯA đối chiếu công cụ ngoài",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "description": "2026 - 30M monthly, 60M bonus paid in December, 1 dependent all year",
+    "year": 2026,
+    "dependent_months": 12,
+    "payments": [
+      {
+        "date": "2026-01-31",
+        "taxable_income": 30000000,
+        "insurance": 3150000,
+        "tax_withheld": 257500
+      },
+      {
+        "date": "2026-02-28",
+        "taxable_income": 30000000,
+        "insurance": 3150000,
+        "tax_withheld": 257500
+      },
+      {
+        "date": "2026-03-31",
+        "taxable_income": 30000000,
+        "insurance": 3150000,
+        "tax_withheld": 257500
+      },
+      {
+        "date": "2026-04-30",
+        "taxable_income": 30000000,
+        "insurance": 3150000,
+        "tax_withheld": 257500
+      },
+      {
+        "date": "2026-05-31",
+        "taxable_income": 30000000,
+        "insurance": 3150000,
+        "tax_withheld": 257500
+      },
+      {
+        "date": "2026-06-30",
+        "taxable_income": 30000000,
+        "insurance": 3150000,
+        "tax_withheld": 257500
+      },
+      {
+        "date": "2026-07-31",
+        "taxable_income": 30000000,
+        "insurance": 3150000,
+        "tax_withheld": 257500
+      },
+      {
+        "date": "2026-08-31",
+        "taxable_income": 30000000,
+        "insurance": 3150000,
+        "tax_withheld": 257500
+      },
+      {
+        "date": "2026-09-30",
+        "taxable_income": 30000000,
+        "insurance": 3150000,
+        "tax_withheld": 257500
+      },
+      {
+        "date": "2026-10-31",
+        "taxable_income": 30000000,
+        "insurance": 3150000,
+        "tax_withheld": 257500
+      },
+      {
+        "date": "2026-11-30",
+        "taxable_income": 30000000,
+        "insurance": 3150000,
+        "tax_withheld": 257500
+      },
+      {
+        "date": "2026-12-31",
+        "taxable_income": 90000000,
+        "insurance": 3150000,
+        "tax_withheld": 10045000
+      }
+    ],
+    "expected_assessable": 121800000,
+    "expected_tax": 6180000,
+    "expected_balance": -6697500,
+    "notes": "Tháng thường: TNTT 5.150.000, thuế 257.500. Tháng 12: TNTT 65.150.000, thuế 10.045.000 (thưởng chịu bậc 30%). Năm: TNCT 420M - BH 37,8M - giảm trừ 260,4M = 121.800.000 -> thuế 6.000.000 + 180.000 = 6.180.000. Đã khấu trừ 12.877.500 -> hoàn 6.697.500",
+    "source": "Tính tay theo Luật Thuế TNCN 109/2025 Điều 9.2 (biểu năm), NĐ 253/2026 Điều 48-49 / TT 111/2013 Điều 9.1.c.1 (giảm trừ đủ 12 tháng); đối chiếu bằng script Python độc lập — CHƯA đối chiếu công cụ ngoài",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "description": "2025 - 35M every month, no dependents (7 brackets): yearly tax equals withholding",
+    "year": 2025,
+    "dependent_months": 0,
+    "payments": [
+      {
+        "date": "2025-01-31",
+        "taxable_income": 35000000,
+        "insurance": 3675000,
+        "tax_withheld": 2415000
+      },
+      {
+        "date": "2025-02-28",
+        "taxable_income": 35000000,
+        "insurance": 3675000,
+        "tax_withheld": 2415000
+      },
+      {
+        "date": "2025-03-31",
+        "taxable_income": 35000000,
+        "insurance": 3675000,
+        "tax_withheld": 2415000
+      },
+      {
+        "date": "2025-04-30",
+        "taxable_income": 35000000,
+        "insurance": 3675000,
+        "tax_withheld": 2415000
+      },
+      {
+        "date": "2025-05-31",
+        "taxable_income": 35000000,
+        "insurance": 3675000,
+        "tax_withheld": 2415000
+      },
+      {
+        "date": "2025-06-30",
+        "taxable_income": 35000000,
+        "insurance": 3675000,
+        "tax_withheld": 2415000
+      },
+      {
+        "date": "2025-07-31",
+        "taxable_income": 35000000,
+        "insurance": 3675000,
+        "tax_withheld": 2415000
+      },
+      {
+        "date": "2025-08-31",
+        "taxable_income": 35000000,
+        "insurance": 3675000,
+        "tax_withheld": 2415000
+      },
+      {
+        "date": "2025-09-30",
+        "taxable_income": 35000000,
+        "insurance": 3675000,
+        "tax_withheld": 2415000
+      },
+      {
+        "date": "2025-10-31",
+        "taxable_income": 35000000,
+        "insurance": 3675000,
+        "tax_withheld": 2415000
+      },
+      {
+        "date": "2025-11-30",
+        "taxable_income": 35000000,
+        "insurance": 3675000,
+        "tax_withheld": 2415000
+      },
+      {
+        "date": "2025-12-31",
+        "taxable_income": 35000000,
+        "insurance": 3675000,
+        "tax_withheld": 2415000
+      }
+    ],
+    "expected_assessable": 243900000,
+    "expected_tax": 28980000,
+    "expected_balance": 0,
+    "notes": "Tháng: TNTT 20.325.000, thuế 2.415.000. Năm: 420M - 44,1M - 132M (11M x 12) = 243.900.000; biểu năm 60/120/216/384M -> 3M + 6M + 14,4M + 5,58M = 28.980.000 = 12 x 2.415.000",
+    "source": "Tính tay theo Luật Thuế TNCN 109/2025 Điều 9.2 (biểu năm), NĐ 253/2026 Điều 48-49 / TT 111/2013 Điều 9.1.c.1 (giảm trừ đủ 12 tháng); đối chiếu bằng script Python độc lập — CHƯA đối chiếu công cụ ngoài",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "description": "2026 - 50M monthly, 2 dependents, charity 5M, medical 30M (capped at 23M), tuition 10M",
+    "year": 2026,
+    "dependent_months": 24,
+    "charity": 5000000,
+    "healthcare": 30000000,
+    "education": 10000000,
+    "payments": [
+      {
+        "date": "2026-01-31",
+        "taxable_income": 50000000,
+        "insurance": 4946000,
+        "tax_withheld": 1215400
+      },
+      {
+        "date": "2026-02-28",
+        "taxable_income": 50000000,
+        "insurance": 4946000,
+        "tax_withheld": 1215400
+      },
+      {
+        "date": "2026-03-31",
+        "taxable_income": 50000000,
+        "insurance": 4946000,
+        "tax_withheld": 1215400
+      },
+      {
+        "date": "2026-04-30",
+        "taxable_income": 50000000,
+        "insurance": 4946000,
+        "tax_withheld": 1215400
+      },
+      {
+        "date": "2026-05-31",
+        "taxable_income": 50000000,
+        "insurance": 4946000,
+        "tax_withheld": 1215400
+      },
+      {
+        "date": "2026-06-30",
+        "taxable_income": 50000000,
+        "insurance": 4946000,
+        "tax_withheld": 1215400
+      },
+      {
+        "date": "2026-07-31",
+        "taxable_income": 50000000,
+        "insurance": 5250000,
+        "tax_withheld": 1185000
+      },
+      {
+        "date": "2026-08-31",
+        "taxable_income": 50000000,
+        "insurance": 5250000,
+        "tax_withheld": 1185000
+      },
+      {
+        "date": "2026-09-30",
+        "taxable_income": 50000000,
+        "insurance": 5250000,
+        "tax_withheld": 1185000
+      },
+      {
+        "date": "2026-10-31",
+        "taxable_income": 50000000,
+        "insurance": 5250000,
+        "tax_withheld": 1185000
+      },
+      {
+        "date": "2026-11-30",
+        "taxable_income": 50000000,
+        "insurance": 5250000,
+        "tax_withheld": 1185000
+      },
+      {
+        "date": "2026-12-31",
+        "taxable_income": 50000000,
+        "insurance": 5250000,
+        "tax_withheld": 1185000
+      }
+    ],
+    "expected_assessable": 166024000,
+    "expected_tax": 10602400,
+    "expected_balance": -3800000,
+    "notes": "BH: 6 x 4.946.000 (trần 46,8M) + 6 x 5.250.000 = 61.176.000. Giảm trừ 186M + 148,8M + 5M + 23M (trần y tế, NĐ 253/2026 Điều 49.2.a) + 10M = 372.800.000 -> TNTT 166.024.000, thuế 10.602.400. Đã khấu trừ 14.402.400 -> hoàn 3.800.000 = 38M giảm trừ thêm x 10%",
+    "source": "Tính tay theo Luật Thuế TNCN 109/2025 Điều 9.2 (biểu năm), NĐ 253/2026 Điều 48-49 / TT 111/2013 Điều 9.1.c.1 (giảm trừ đủ 12 tháng); đối chiếu bằng script Python độc lập — CHƯA đối chiếu công cụ ngoài",
+    "verified_at": "2026-10-20"
+  }
+]

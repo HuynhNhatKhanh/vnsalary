@@ -14,6 +14,26 @@ Entries that change computed amounts are marked **(results change)**.
 
 ## [Unreleased]
 
+### Added
+
+- `Annual` computes the annual PIT finalization of a tax year from its
+  payments: the yearly tax on all salary income versus the tax withheld, and
+  the balance to pay or refund
+  ([#6](https://github.com/HuynhNhatKhanh/vnsalary/issues/6)). The personal
+  deduction counts 12 months whatever the months worked; dependents count by
+  month; charity, medical (up to 23M) and tuition (up to 24M) deductions apply
+  from tax period 2026 (Decree 253/2026/NĐ-CP Art. 48–49). Tax years from 2025.
+- `Payment`, `Result.Payment`, `AnnualOptions`, `AnnualDeductions`,
+  `AnnualResult`; errors `ErrYearOutOfRange`, `ErrPaymentOutsideYear`,
+  `ErrTooManyPayments`, `ErrInvalidDependentMonths`; warning
+  `health_education_not_deductible`.
+- `Policy.HealthcareDeductionCap` and `Policy.EducationDeductionCap`, and the
+  legal sources for finalization in the 2024-07-01 and 2026 policies.
+- Four golden finalization cases (job change, December bonus, a steady 2025
+  salary, 2026 deductions), computed by hand and by an independent script.
+
+No change in any monthly computed amount.
+
 ## [0.3.1] - 2026-10-16
 
 No change in any computed amount or in the library API.

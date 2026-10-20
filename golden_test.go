@@ -130,3 +130,74 @@ func checkOptional(t *testing.T, name string, got vnsalary.VND, want *int64) {
 		t.Errorf("%s mismatch: got %d, want %d", name, got, *want)
 	}
 }
+
+// annualGoldenCase is one entry of testdata/annual_golden.json.
+type annualGoldenCase struct {
+	Description     string `json:"description"`
+	Year            int    `json:"year"`
+	DependentMonths int    `json:"dependent_months"`
+	Charity         int64  `json:"charity"`
+	Healthcare      int64  `json:"healthcare"`
+	Education       int64  `json:"education"`
+	Payments        []struct {
+		Date          string `json:"date"`
+		TaxableIncome int64  `json:"taxable_income"`
+		Insurance     int64  `json:"insurance"`
+		TaxWithheld   int64  `json:"tax_withheld"`
+	} `json:"payments"`
+	ExpectedAssessable int64  `json:"expected_assessable"`
+	ExpectedTax        int64  `json:"expected_tax"`
+	ExpectedBalance    int64  `json:"expected_balance"`
+	Source             string `json:"source"`
+	VerifiedAt         string `json:"verified_at"`
+}
+
+func TestAnnualGoldenData(t *testing.T) {
+	data, err := os.ReadFile("testdata/annual_golden.json")
+	if err != nil {
+		t.Fatalf("failed to read testdata/annual_golden.json: %v", err)
+	}
+	var cases []annualGoldenCase
+	if err := json.Unmarshal(data, &cases); err != nil {
+		t.Fatalf("failed to parse annual_golden.json: %v", err)
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.Description, func(t *testing.T) {
+			if tc.Source == "" || tc.VerifiedAt == "" {
+				t.Errorf("case must have source and verified_at")
+			}
+			payments := make([]vnsalary.Payment, len(tc.Payments))
+			for i, p := range tc.Payments {
+				date, err := time.Parse("2006-01-02", p.Date)
+				if err != nil {
+					t.Fatalf("invalid date format in test case: %v", err)
+				}
+				payments[i] = vnsalary.Payment{
+					Date:          date,
+					TaxableIncome: vnsalary.VND(p.TaxableIncome),
+					Insurance:     vnsalary.VND(p.Insurance),
+					TaxWithheld:   vnsalary.VND(p.TaxWithheld),
+				}
+			}
+			res, err := vnsalary.Annual(tc.Year, payments, vnsalary.AnnualOptions{
+				DependentMonths: tc.DependentMonths,
+				Charity:         vnsalary.VND(tc.Charity),
+				Healthcare:      vnsalary.VND(tc.Healthcare),
+				Education:       vnsalary.VND(tc.Education),
+			})
+			if err != nil {
+				t.Fatalf("Annual failed: %v", err)
+			}
+			if int64(res.AssessableIncome) != tc.ExpectedAssessable {
+				t.Errorf("AssessableIncome mismatch: got %d, want %d", res.AssessableIncome, tc.ExpectedAssessable)
+			}
+			if int64(res.Tax) != tc.ExpectedTax {
+				t.Errorf("Tax mismatch: got %d, want %d", res.Tax, tc.ExpectedTax)
+			}
+			if int64(res.Balance) != tc.ExpectedBalance {
+				t.Errorf("Balance mismatch: got %d, want %d", res.Balance, tc.ExpectedBalance)
+			}
+		})
+	}
+}
