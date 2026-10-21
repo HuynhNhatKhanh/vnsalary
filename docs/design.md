@@ -366,7 +366,7 @@ how often users are likely to need it:
   ([#6](https://github.com/HuynhNhatKhanh/vnsalary/issues/6)): uneven income,
   job changes and late dependents make monthly withholding differ from the
   yearly tax.
-- **v0.5.0**: 10% withholding for contracts under 3 months
+- **v0.5.0** (released): 10% withholding for contracts under 3 months
   ([#7](https://github.com/HuynhNhatKhanh/vnsalary/issues/7)), foreign
   employees ([#9](https://github.com/HuynhNhatKhanh/vnsalary/issues/9)),
   non-residents ([#8](https://github.com/HuynhNhatKhanh/vnsalary/issues/8)).
