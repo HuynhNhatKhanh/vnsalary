@@ -47,9 +47,12 @@ jobs:
     needs: binaries
     runs-on: ubuntu-latest
     # Tap updates from different tags run one at a time, never cancelled.
+    # queue: max keeps every pending run (the default keeps one and cancels the
+    # rest); actionlint 1.7.12 does not know the key yet, GitHub's docs do.
     concurrency:
       group: homebrew-tap
       cancel-in-progress: false
+      queue: max
     steps:
       - uses: actions/checkout@v7
 
