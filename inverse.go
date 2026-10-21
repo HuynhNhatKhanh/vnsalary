@@ -19,6 +19,9 @@ func computeBreakpoints(policy *Policy, opts Options) []breakpoint {
 	notInsured := ex.Overtime + ex.Bonus     // gross - notInsured = insurance salary (InsuranceBase nil)
 	exempt := exemptIncome(policy, ex).Total // constant for given extras
 	totalDeductions := policy.PersonalDeduction + policy.DependentDeduction*VND(opts.Dependents)
+	if opts.NonResident {
+		totalDeductions = 0
+	}
 
 	grossPoints := []VND{minGross}
 
@@ -67,13 +70,19 @@ func computeBreakpoints(policy *Policy, opts Options) []breakpoint {
 		return x + notInsured
 	}
 
+	// Non-residents pay one flat rate from the first đồng: no tax thresholds.
+	brackets := policy.Brackets
+	if opts.NonResident {
+		brackets = nil
+	}
+
 	// Threshold 1: where personal income tax begins (assessable income = 0)
-	if g := grossFor(0); g > minGross {
+	if g := grossFor(0); g > minGross && !opts.NonResident {
 		grossPoints = append(grossPoints, g)
 	}
 
 	// Thresholds 2+: Progressive tax bracket transitions
-	for _, b := range policy.Brackets {
+	for _, b := range brackets {
 		if b.Limit > 1_000_000_000_000 { // Ignore MaxInt64
 			continue
 		}
@@ -106,6 +115,31 @@ func computeBreakpoints(policy *Policy, opts Options) []breakpoint {
 	}
 
 	return bps
+}
+
+// nonResidentWindow bounds how far below a gross another gross with the same
+// net can be. For non-residents with extras the tax base (gross minus exempt
+// income) and the insurance base (gross minus overtime and bonus) are offset,
+// and the flat tax does not shrink when insurance grows, so net can step down
+// by 1 VND and the grosses sharing one net need not be contiguous. Net grows
+// by at least 0.58 VND per VND of gross (what remains after 10.5% insurance
+// and 35% tax), and the roundings that vary move it by at most 5 VND, so no
+// gross 32 VND or more below has the same net.
+const nonResidentWindow = 32
+
+// smallestGross moves down from g while some gross within window below it
+// satisfies same, and returns the smallest one reached.
+func smallestGross(g, window VND, same func(VND) bool) VND {
+	for moved := true; moved; {
+		moved = false
+		for k := VND(1); k <= window && g-k >= 0; k++ {
+			if same(g - k) {
+				g, moved = g-k, true
+				break
+			}
+		}
+	}
+	return g
 }
 
 // NetToGross solves the minimum integer Gross salary that yields the exact Net salary.
@@ -151,17 +185,16 @@ func NetToGross(net VND, opts Options) (Result, error) {
 		return res.Net, true
 	}
 
-	// leftmost walks down from a gross g with Net(g) == net to the smallest such
-	// gross. Net is non-decreasing in gross (TestNetSteps_ZeroOrOne), so the
-	// grosses sharing one net form a single interval of a few VND.
+	// leftmost moves from a gross g with Net(g) == net to the smallest such gross.
+	window := VND(1) // residents: net never decreases (TestNetSteps_ZeroOrOne)
+	if opts.NonResident {
+		window = nonResidentWindow
+	}
 	leftmost := func(g VND) VND {
-		for g > 0 {
-			if n, ok := netAt(g - 1); !ok || n != net {
-				break
-			}
-			g--
-		}
-		return g
+		return smallestGross(g, window, func(x VND) bool {
+			n, ok := netAt(x)
+			return ok && n == net
+		})
 	}
 
 	bps := computeBreakpoints(policy, opts)
@@ -176,8 +209,13 @@ func NetToGross(net VND, opts Options) (Result, error) {
 		gApprox, segmentLow, segmentHigh = 0, 0, bps[0].gross
 	case net >= bps[len(bps)-1].net:
 		last := bps[len(bps)-1]
-		// Beyond the final breakpoint: insurance capped, top tax bracket at 35% -> slope is 65%.
-		gApprox = last.gross + roundDiv(int64(net-last.net)*100, 65)
+		// Beyond the final breakpoint: insurance capped, top tax rate 35% (20% for
+		// non-residents) -> slope is 65% (80%).
+		slope := int64(65)
+		if opts.NonResident {
+			slope = 80
+		}
+		gApprox = last.gross + roundDiv(int64(net-last.net)*100, slope)
 		segmentLow, segmentHigh = last.gross, MaxGross
 	default:
 		for i := 0; i < len(bps)-1; i++ {
@@ -222,6 +260,13 @@ func NetToGross(net VND, opts Options) (Result, error) {
 	}
 	if found != -1 {
 		return finish(leftmost(found))
+	}
+	// A 1 VND step down (non-residents) can mislead the bisection by a few VND:
+	// look around where it stopped.
+	for g := max(low-nonResidentWindow, 0); g <= min(low+nonResidentWindow, MaxGross); g++ {
+		if n, ok := netAt(g); ok && n == net {
+			return finish(leftmost(g))
+		}
 	}
 
 	return Result{}, ErrNetUnreachable

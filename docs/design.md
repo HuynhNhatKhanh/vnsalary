@@ -34,8 +34,9 @@ disagreed between sources. A parameter set with citations is useful in itself.
 | PIT | progressive by bracket: 7 brackets until 2025, 5 brackets from 2026 |
 | Employer cost | BHXH 17.5% (incl. 0.5% occupational accident), BHYT 3%, BHTN 1% |
 | Policy by date | `Options.Date` selects the parameter set |
-| CLI | `gross`, `net`, `diff` (with `--foreigner`), `flat`, `annual` (JSON file of payments), `--json`, `--lang vi\|en` |
+| CLI | `gross`, `net`, `diff` (with `--foreigner`, `--non-resident`), `flat`, `annual` (JSON file of payments), `--json`, `--lang vi\|en` |
 | Extras (v0.3.0) | overtime, cash meal allowance, other exempt allowances and bonus inside gross; exempt income, insurance salary and the tax caused by the bonus |
+| Non-residents (v0.5.0) | `Options.NonResident`: 20% of taxable income, no deductions; `NetToGross` still exact and minimal; `--non-resident` |
 | Foreign employees (v0.5.0) | `Options.Foreigner`: no unemployment insurance for employee or employer; `--foreigner` |
 | 10% withholding (v0.5.0) | `FlatWithholding`: 10% of a payment to a resident without a labour contract or with one under 3 months, from the threshold of the payment date (2M, 5M from 2026-07-01); `vnsalary flat` |
 | Annual finalization (v0.4.0) | yearly tax on all payments of a tax year vs. the tax withheld; 12 months of personal deduction, dependent months, charity, medical and tuition deductions (§8) |
@@ -207,6 +208,15 @@ the result is minimal by construction, not only within the scan window.
 the result gives a smaller net) and fuzzing check it. The window keeps the
 common case at roughly 13 µs on the author's machine.
 
+**Non-residents.** A flat 20% on taxable income does not shrink when
+insurance grows, and with extras the tax base and the insurance base are
+offset, so net can fall by 1 VND as gross rises. The grosses sharing one net
+then need not be contiguous. For non-residents the walk to the smallest gross
+checks a 32 VND window below each match: net grows by at least 0.58 VND per
+VND of gross and the varying roundings move it by at most 5 VND, so nothing
+further below can match (`TestSmallestGross_CrossesStepDown`,
+`TestNonResident_NetStepsAndSmallestGross`).
+
 The breakpoint estimates assume the social/health cap is below the
 unemployment cap in every region (50.6M vs. at least 74M today);
 `TestPoliciesInvariants` fails if a new policy breaks that, or the ordering,
@@ -267,7 +277,7 @@ not decide filing obligations.
 | Layer | What it proves |
 |---|---|
 | table tests | brackets, caps, regions, dependents, ±1 VND around every bracket limit, dates before/on/after each policy change |
-| golden data (`testdata/golden.json`) | 36 cases with `source`, `verified_at`, `notes`; 12 matched against TopCV; 11 odd amounts pin each insurance item and the tax rounding; 9 cover overtime, allowances and bonuses |
+| golden data (`testdata/golden.json`) | 40 cases with `source`, `verified_at`, `notes`; 12 matched against TopCV; 14 odd amounts exercise the rounding and 14 cases pin each insurance item; 10 cover overtime, allowances and bonuses; 4 cover foreign employees and non-residents |
 | annual golden data (`testdata/annual_golden.json`) | 4 finalization cases (job change, December bonus, steady 2025 salary, 2026 deductions) computed by hand and by an independent script; `ExampleAnnual` reproduces the job-change case through `GrossToNet` |
 | independent reference | expected values for odd amounts come from a separate implementation with exact fractions, not from vnsalary |
 | properties | `Net(NetToGross(n)) == n`; `NetToGross(Net(g)).Gross ≤ g` and minimal; net steps of 0 or 1; a steady salary's yearly tax equals its withholding up to rounding |
@@ -328,6 +338,8 @@ and a real test of how pleasant the API is.
 | 2026-10-20 | First tax year 2025 | the policy data starts on 2024-07-01, so 2024 is not covered in full |
 | 2026-10-20 | 10% threshold 5M from 2026-07-01, 2M before ([#7](https://github.com/HuynhNhatKhanh/vnsalary/issues/7)) | withholding is done at payment time under the rules then in force; Decree 253/2026 took effect on 2026-07-01 (see §14 for the reading of Art. 69.1.a) |
 | 2026-10-21 | `Options.Foreigner` drops unemployment insurance only ([#9](https://github.com/HuynhNhatKhanh/vnsalary/issues/9)) | the Law on Employment defines the employee as a Vietnamese citizen (74/2025 Art. 2.1; 38/2013 Art. 3.1); social insurance exemptions depend on facts the library does not have (contract length, transfer status, age at signing), so they are documented, not modelled |
+| 2026-10-21 | Non-resident rate as a one-bracket schedule, `Policy.NonResidentBrackets` ([#8](https://github.com/HuynhNhatKhanh/vnsalary/issues/8)) | reuses the bracket code and its rounding; a future change of rate is a policy edit |
+| 2026-10-21 | `NetToGross` searches a 32 VND window below the first match for non-residents only | with extras their net can fall by 1 VND, so grosses with one net need not be contiguous; residents keep the one-step walk, proven by `TestNetSteps_ZeroOrOne`, and its speed |
 | 2026-10-21 | Residence and nationality are separate options | a foreigner can be a tax resident and a Vietnamese citizen a non-resident; insurance follows nationality, tax follows residence |
 | 2026-10-20 | `FlatWithholding` computes tax only; below the threshold `Withheld` is 0 | withholding on request and the deferral commitment are the individual's choice; insurance depends on the contract, not on the tax rule |
 
@@ -357,7 +369,7 @@ how often users are likely to need it:
 - **v0.5.0**: 10% withholding for contracts under 3 months
   ([#7](https://github.com/HuynhNhatKhanh/vnsalary/issues/7)), foreign
   employees ([#9](https://github.com/HuynhNhatKhanh/vnsalary/issues/9)),
-  non-residents.
+  non-residents ([#8](https://github.com/HuynhNhatKhanh/vnsalary/issues/8)).
 
 Law changes are released as soon as the document is issued, outside this
 order (for example the 2027 regional minimum wage,
@@ -414,5 +426,7 @@ Checked against the full texts or official publications on 2026-10-13; the rows 
 | Yearly schedule: monthly limits × 12 | Law 109/2025/QH15 Art. 9.2 |
 | 10% withholding for contracts under 3 months from 5,000,000 per payment; below it on request | Decree 253/2026/NĐ-CP Art. 50.2 |
 | 10% withholding from 2,000,000 per payment before 2026-07-01 | Circular 111/2013/TT-BTC Art. 25.1.i |
+| Non-residents: 20% of salary income from work in Vietnam, determined as for residents, no deductions | Decree 253/2026/NĐ-CP Art. 64.1–2 (Công báo No. 402); Law on PIT 2007 Art. 26.1, Circular 111/2013/TT-BTC Art. 18 before 2026 |
+| Resident: 183 days in the calendar year or 12 consecutive months, or a regular place to stay | Decree 253/2026/NĐ-CP Art. 4, 5 |
 | Unemployment insurance covers Vietnamese citizens only | Law on Employment 74/2025/QH15 Art. 2.1, Art. 31 (full text, xaydungchinhsach.chinhphu.vn); Law 38/2013/QH13 Art. 3.1, Art. 43 before 2026 |
 | Foreign employees on contracts of 12 months or more pay social insurance, except intra-company transfers, retirement age at signing, treaties | Law 41/2024/QH15 Art. 2.2 (Công báo No. 987+988, 2024-08-25); Decree 143/2018/NĐ-CP before 2025-07-01 |

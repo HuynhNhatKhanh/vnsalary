@@ -29,9 +29,17 @@ Entries that change computed amounts are marked **(results change)**.
   health insurance unchanged
   ([#9](https://github.com/HuynhNhatKhanh/vnsalary/issues/9)). CLI
   `--foreigner`; `"foreigner"` in the `annual` input file.
+- `Options.NonResident`: 20% of taxable income, without family or insurance
+  deductions (Decree 253/2026/NĐ-CP Art. 64; Law on PIT 2007 Art. 26
+  before 2026) ([#8](https://github.com/HuynhNhatKhanh/vnsalary/issues/8)).
+  `NetToGross` stays exact and returns the smallest gross. Warning
+  `dependents_ignored_non_resident`; `Policy.NonResidentBrackets`; CLI
+  `--non-resident`.
 
 ### Fixed
 
+- CLI: `diff` prints warnings (once per code across both periods); it
+  printed none before.
 - CLI: an extra argument is now an error. Flags after it, as in
   `gross 35000000 x --bonus 5000000`, were ignored without notice.
 

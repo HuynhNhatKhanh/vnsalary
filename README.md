@@ -181,6 +181,20 @@ res, _ := vnsalary.GrossToNet(60_000_000, vnsalary.Options{
 
 A foreign employee pays social insurance on a contract of 12 months or more (Law 41/2024 Art. 2.2); the exemptions (intra-company transfer, retirement age at signing, treaties) are not modelled. `Foreigner` changes insurance only: tax still follows residence (183 days in Vietnam, or a regular place to stay).
 
+### 8. Non-Residents
+
+A non-resident pays 20% of taxable income from work in Vietnam, with no family or insurance deductions (Decree 253/2026 Art. 64; Law on PIT 2007 Art. 26 before). Residence is the caller's call: 183 days or more in Vietnam in the calendar year or in 12 consecutive months, or a regular place to stay (Decree 253/2026 Art. 4).
+
+```go
+res, _ := vnsalary.GrossToNet(60_000_000, vnsalary.Options{
+	Region: vnsalary.Region1, Date: time.Date(2026, 8, 10, 0, 0, 0, 0, time.UTC),
+	Foreigner: true, NonResident: true,
+})
+fmt.Println(res.Tax, res.Net) // 12000000 43193000
+```
+
+`NonResident` changes tax only; combine it with `Foreigner` for a foreign national. `NetToGross` still returns the smallest gross: with extras, a non-resident's net can fall by 1 VND as gross rises (the flat tax does not shrink when insurance grows), so it searches a 32 VND window below the first match.
+
 ---
 
 ## 📊 Legal Reference & Policy Comparison
@@ -226,10 +240,10 @@ The legal texts set rates and caps but no rounding step, and calculators differ 
 
 ## ⚠️ Limitations
 
-vnsalary covers **resident employees on labour contracts of 3 months or more**. Check these before relying on it for a real payroll:
+vnsalary covers **employees on labour contracts, resident or not, Vietnamese or foreign**; payments without a contract or under one shorter than 3 months go through `FlatWithholding`. Check these before relying on it for a real payroll:
 
 - **Exempt allowances are taken as given.** `Extras.Overtime` must be pay for hours within the legal limits (pay for extra hours belongs in gross only), and the limits of `Extras.OtherExempt` (phone, uniform, …) follow your employer's regulation; the library does not check them.
-- **Not covered:** non-residents (20%); for foreign employees, the social insurance exemptions (intra-company transfer, retirement age, treaties).
+- **Not covered:** for foreign employees, the social insurance exemptions (intra-company transfer, retirement age, treaties); for non-residents working in and outside Vietnam, splitting income by days in Vietnam (Decree 253/2026 Art. 64.3): pass the Vietnam part.
 - **An insurance salary below the regional minimum wage is computed as given, with a warning.** A full-time employee must be paid at least that minimum, so `Result.Warnings` reports code `insurance_salary_below_regional_minimum` (the CLI prints it with `[!]`). It is not an error because part-time contracts can legally be lower.
 - **Employer accident insurance is fixed at 0.5%**, so employer social insurance is always 17.5%. Some employers pay 0.3%.
 - **The 2% trade union fee is not in `Employer.TotalCost`.** It is not insurance, but the employer pays it.
@@ -280,6 +294,7 @@ vnsalary gross 55000000 --overtime 5000000 --meal 1500000 --other-exempt 800000 
 #### Foreign employees
 ```bash
 vnsalary gross 60000000 --foreigner --date 2026-08-10                # no unemployment insurance
+vnsalary gross 60000000 --foreigner --non-resident --date 2026-08-10 # 20% flat, no deductions
 ```
 
 #### 10% withholding
@@ -335,7 +350,7 @@ BenchmarkNetToGross-16       111998         12749   ns/op       12920 B/op      
 ## 🧪 Testing
 
 The library is verified with a comprehensive test suite:
-- **Golden Test Dataset (`testdata/golden.json`):** 36 cases, each with a `source` and `verified_at` field stating how it was checked (hand calculation, an independent reference implementation, or an external calculator). 12 cases were matched to the VND against the TopCV calculator (2026-10-13 and 2026-10-15); cases not yet cross-checked with an external tool say so explicitly. 11 cases use odd amounts such as 23,456,789 so that every rounding step is exercised, and pin each insurance item.
+- **Golden Test Dataset (`testdata/golden.json`):** 40 cases, each with a `source` and `verified_at` field stating how it was checked (hand calculation, an independent reference implementation, or an external calculator). 12 cases were matched to the VND against the TopCV calculator (2026-10-13 and 2026-10-15); cases not yet cross-checked with an external tool say so explicitly. 14 cases use odd amounts such as 23,456,789 so that every rounding step is exercised; 14 pin each insurance item. 4 cases cover foreign employees and non-residents.
 - **Round-Trip Invariance Testing:** for every gross `g`, `NetToGross(Net(g))` returns the **smallest** gross with the same net, so `Net(NetToGross(Net(g))) == Net(g)` and `NetToGross(Net(g)).Gross <= g` (several grosses can share one net because of rounding).
 - **Policy invariants:** `TestPoliciesInvariants` fails if a new policy breaks an assumption of the inverse algorithm (ordering, social/health cap below unemployment cap, top bracket 35%, sources present).
 - **Fuzz Testing:** Includes `FuzzGrossToNet_NetToGross` verifying property invariance on arbitrary inputs.

@@ -469,7 +469,9 @@ func FuzzGrossToNet_NetToGross(f *testing.F) {
 			Extras:     Extras{Overtime: VND(ot), MealCash: VND(meal), OtherExempt: VND(other), Bonus: VND(bonus)},
 		}
 
-		opts.Foreigner = gross%2 == 1 // both insurance sets, without changing the corpus format
+		// Both insurance sets and both tax regimes, without changing the corpus format.
+		opts.Foreigner = gross%2 == 1
+		opts.NonResident = gross%4 >= 2
 
 		resForward, err := GrossToNet(VND(gross), opts)
 		if errors.Is(err, ErrExtrasExceedGross) {
@@ -487,8 +489,11 @@ func FuzzGrossToNet_NetToGross(f *testing.F) {
 			t.Fatalf("inverse mismatch: NetToGross(%d) = gross %d net %d, from gross %d",
 				resForward.Net, resInverse.Gross, resInverse.Net, resForward.Gross)
 		}
-		if below, err := GrossToNet(resInverse.Gross-1, opts); err == nil && below.Net == resForward.Net {
-			t.Fatalf("gross %d is not the smallest for net %d", resInverse.Gross, resForward.Net)
+		// Non-resident nets can step down by 1 VND, so look further than one VND below.
+		for g := max(resInverse.Gross-64, 0); g < resInverse.Gross; g++ {
+			if below, err := GrossToNet(g, opts); err == nil && below.Net == resForward.Net {
+				t.Fatalf("gross %d is not the smallest for net %d: %d gives it", resInverse.Gross, resForward.Net, g)
+			}
 		}
 	})
 }
@@ -932,4 +937,116 @@ func TestForeigner_NoUnemploymentInsurance(t *testing.T) {
 			t.Errorf("%s: NetToGross(%d) = %d, %v; want 60,000,000", d.Format(time.DateOnly), fn.Net, inv.Gross, err)
 		}
 	}
+}
+
+// Non-residents pay 20% of taxable income, without deductions; insurance is
+// unchanged and not deducted (Decree 253/2026/NĐ-CP Art. 64).
+func TestNonResident_FlatRate(t *testing.T) {
+	opts := Options{Region: Region1, Date: date(2026, 8, 10), Foreigner: true, NonResident: true, Dependents: 2}
+	res, err := GrossToNet(60_000_000, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Insurance.Total != 4_807_000 || res.Tax != 12_000_000 || res.Net != 43_193_000 {
+		t.Errorf("got insurance %d, tax %d, net %d; want 4,807,000, 12,000,000, 43,193,000", res.Insurance.Total, res.Tax, res.Net)
+	}
+	if res.Deductions != (Deductions{}) || res.AssessableIncome != 60_000_000 {
+		t.Errorf("got deductions %+v, assessable %d", res.Deductions, res.AssessableIncome)
+	}
+	if len(res.Brackets) != 1 || res.Brackets[0].RatePercent != 20 {
+		t.Errorf("got brackets %+v, want one line at 20%%", res.Brackets)
+	}
+	if !hasWarning(res, WarnDependentsIgnoredNonResident) {
+		t.Errorf("want %s warning, got %v", WarnDependentsIgnoredNonResident, res.Warnings)
+	}
+
+	// A bonus costs exactly 20% of itself.
+	opts.Extras = Extras{Bonus: 20_000_000}
+	res, err = GrossToNet(80_000_000, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.BonusTax != 4_000_000 || res.Insurance.Total != 4_807_000 {
+		t.Errorf("got bonus tax %d, insurance %d; want 4,000,000, 4,807,000", res.BonusTax, res.Insurance.Total)
+	}
+
+	// Before 2026 the rate is also 20% (Law on PIT 2007 Art. 26).
+	old, err := GrossToNet(30_000_000, Options{Region: Region1, Date: date(2025, 5, 5), NonResident: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if old.Tax != 6_000_000 {
+		t.Errorf("2025: tax %d, want 6,000,000", old.Tax)
+	}
+}
+
+// With extras, the tax base (gross minus exempt income) and the insurance base
+// (gross minus overtime and bonus) are offset, and a flat rate on the first
+// does not shrink when insurance grows: net can step down by 1 VND. NetToGross
+// must still return the smallest gross with the requested net.
+func TestNonResident_NetStepsAndSmallestGross(t *testing.T) {
+	for _, ex := range []Extras{{}, {Bonus: 1}, {MealCash: 3}, {OtherExempt: 4, Overtime: 7}, {Overtime: 3_333_333, MealCash: 1_500_000, OtherExempt: 777_777, Bonus: 12_345_678}} {
+		opts := Options{Region: Region1, Date: date(2026, 8, 10), NonResident: true, Extras: ex}
+		base := ex.total() + 20_000_000
+		prev, err := computeNet(&defaultPolicies[0], base, opts)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for g := base + 1; g < base+2_000; g++ {
+			res, err := computeNet(&defaultPolicies[0], g, opts)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if step := res.Net - prev.Net; step < -1 || step > 1 {
+				t.Fatalf("extras %+v: Net(%d)=%d, Net(%d)=%d (step %d)", ex, g-1, prev.Net, g, res.Net, step)
+			}
+			prev = res
+
+			inv, err := NetToGross(res.Net, opts)
+			if err != nil {
+				t.Fatalf("extras %+v: NetToGross(%d): %v", ex, res.Net, err)
+			}
+			if inv.Net != res.Net || inv.Gross > g {
+				t.Fatalf("extras %+v: NetToGross(%d) = gross %d net %d, from gross %d", ex, res.Net, inv.Gross, inv.Net, g)
+			}
+			for below := inv.Gross - 64; below < inv.Gross; below++ {
+				if r, err := computeNet(&defaultPolicies[0], below, opts); err == nil && r.Net == res.Net {
+					t.Fatalf("extras %+v: gross %d is not the smallest for net %d: %d gives it", ex, inv.Gross, res.Net, below)
+				}
+			}
+		}
+	}
+}
+
+// smallestGross must cross a 1 VND step down of net, which a walk that stops
+// at the first different net does not.
+func TestSmallestGross_CrossesStepDown(t *testing.T) {
+	opts := Options{Region: Region1, Date: date(2026, 8, 10), NonResident: true, Extras: Extras{Bonus: 1}}
+	netAt := func(g VND) VND {
+		res, err := computeNet(&defaultPolicies[0], g, opts)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return res.Net
+	}
+	for g := VND(30_000_000); g < 30_002_000; g++ {
+		n := netAt(g)
+		if netAt(g-1) != n+1 || netAt(g-2) != n {
+			continue // not a step down that a contiguous walk would stop at
+		}
+		same := func(x VND) bool { return netAt(x) == n }
+		if got := smallestGross(g, 1, same); got != g {
+			t.Fatalf("window 1 crossed the step: got %d", got)
+		}
+		got := smallestGross(g, nonResidentWindow, same)
+		if got > g-2 {
+			t.Fatalf("Net(%d) = Net(%d) = %d but smallestGross returned %d", g-2, g, n, got)
+		}
+		inv, err := NetToGross(n, opts)
+		if err != nil || inv.Gross != got {
+			t.Fatalf("NetToGross(%d) = %d, %v; want %d", n, inv.Gross, err, got)
+		}
+		return
+	}
+	t.Fatal("no 1 VND step down found; the test no longer exercises the case")
 }

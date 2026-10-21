@@ -12,7 +12,7 @@
 //
 // Flags: -d/--dependents, -r/--region (1..4), --date YYYY-MM-DD (payment date,
 // default today), --from/--to (for diff), --ins-base, --overtime, --meal,
-// --other-exempt, --bonus, --foreigner, --json, --lang vi|en.
+// --other-exempt, --bonus, --foreigner, --non-resident, --json, --lang vi|en.
 //
 // Exit codes: 0 success, 1 calculation error, 2 usage error.
 package main
@@ -105,6 +105,7 @@ Flags:
       --other-exempt int    Phụ cấp miễn thuế khác theo quy chế công ty (điện thoại, trang phục…)
       --bonus int           Tiền thưởng trong tháng nằm trong số tiền (chịu thuế, không đóng BH)
       --foreigner           Người lao động nước ngoài: không đóng BHTN
+      --non-resident        Cá nhân không cư trú: thuế 20%, không giảm trừ
       --lang string         Ngôn ngữ hiển thị: vi, en (mặc định: vi)
       --json                Xuất kết quả dạng JSON`,
 		errFlags:      "Lỗi phân tích cờ: %v",
@@ -146,6 +147,7 @@ Flags:
       --other-exempt int    Other allowances exempt under the employer's regulation (phone, uniform...)
       --bonus int           Bonus paid this month, included in the amount (taxed, no insurance)
       --foreigner           Foreign national: no unemployment insurance
+      --non-resident        Non-resident for PIT: 20%, no deductions
       --lang string         Display language: vi, en (default: vi)
       --json                Print the result as JSON`,
 		errFlags:      "Error parsing flags: %v",
@@ -325,6 +327,10 @@ var warningText = map[string]map[string]string{
 		"vi": "Mức trần tiền ăn giữa ca cho ngày chi trả này chưa được xác nhận bằng văn bản luật",
 		"en": "The meal allowance cap for this payment date is not confirmed by a legal text",
 	},
+	vnsalary.WarnDependentsIgnoredNonResident: {
+		"vi": "Cá nhân không cư trú không được giảm trừ gia cảnh; đã bỏ qua -d",
+		"en": "Non-residents have no family deductions; -d is ignored",
+	},
 	vnsalary.WarnHealthEducationNotDeductible: {
 		"vi": "Chi phí y tế, giáo dục chỉ được giảm trừ từ kỳ tính thuế 2026; đã bỏ qua",
 		"en": "Medical and tuition expenses are deductible from tax period 2026; ignored",
@@ -333,6 +339,21 @@ var warningText = map[string]map[string]string{
 		"vi": "Lương đóng bảo hiểm đang gồm cả --meal và --other-exempt; dùng --ins-base nếu hợp đồng không tính chúng",
 		"en": "Insurance salary includes --meal and --other-exempt; use --ins-base if the contract excludes them",
 	},
+}
+
+// uniqueWarnings merges warning lists, keeping the first warning of each code.
+func uniqueWarnings(lists ...[]vnsalary.Warning) []vnsalary.Warning {
+	var out []vnsalary.Warning
+	seen := map[string]bool{}
+	for _, list := range lists {
+		for _, w := range list {
+			if !seen[w.Code] {
+				seen[w.Code] = true
+				out = append(out, w)
+			}
+		}
+	}
+	return out
 }
 
 func printWarnings(w io.Writer, warnings []vnsalary.Warning, lang string) {
@@ -495,6 +516,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	otherExempt := flags.Int64("other-exempt", 0, "")
 	bonus := flags.Int64("bonus", 0, "")
 	foreigner := flags.Bool("foreigner", false, "")
+	nonResident := flags.Bool("non-resident", false, "")
 	flags.String("lang", "vi", "") // already read by detectLang
 	asJSON := flags.Bool("json", false, "")
 
@@ -570,6 +592,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 			Region:        vnsalary.Region(*region),
 			Date:          d,
 			Foreigner:     *foreigner,
+			NonResident:   *nonResident,
 			Extras: vnsalary.Extras{
 				Overtime:    vnsalary.VND(*overtime),
 				MealCash:    vnsalary.VND(*meal),
@@ -607,6 +630,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 			return 0
 		}
 		printDiffTable(stdout, amount, dFrom, dTo, resFrom, resTo, *dependents, *region, lang)
+		printWarnings(stdout, uniqueWarnings(resFrom.Warnings, resTo.Warnings), lang)
 		return 0
 	}
 

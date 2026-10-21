@@ -64,6 +64,8 @@ func TestRun_ExitCodesAndMessages(t *testing.T) {
 		{"flat ok", []string{"flat", "8000000", "--date", "2026-08-01"}, 0, "THỰC NHẬN: 7.200.000 đ", ""},
 		{"flat below threshold", []string{"flat", "4000000", "--date", "2026-08-01", "--lang", "en"}, 0, "Below the threshold", ""},
 		{"foreigner net", []string{"net", "50754400", "--foreigner", "--date", "2026-08-10"}, 0, "LƯƠNG GROSS: 60.000.000 đ", ""},
+		{"non-resident net", []string{"net", "43193000", "--foreigner", "--non-resident", "--date", "2026-08-10"}, 0, "LƯƠNG GROSS: 60.000.000 đ", ""},
+		{"flat rejects non-resident", []string{"flat", "8000000", "--non-resident"}, 2, "", "lệnh flat không dùng cờ -non-resident"},
 		{"flat rejects foreigner", []string{"flat", "8000000", "--foreigner"}, 2, "", "lệnh flat không dùng cờ -foreigner"},
 		{"flat rejects unused flag", []string{"flat", "8000000", "--bonus", "1000000"}, 2, "", "lệnh flat không dùng cờ -bonus"},
 		{"flat rejects unused flag en", []string{"flat", "8000000", "-d", "1", "--lang", "en"}, 2, "", "the flat command does not use -d"},
@@ -202,6 +204,7 @@ func TestRun_Golden(t *testing.T) {
 		{"extras_vi.golden", []string{"gross", "55000000", "-d", "1", "--overtime", "5000000", "--meal", "1500000", "--other-exempt", "800000", "--bonus", "10000000", "--date", "2026-08-10"}},
 		{"extras_en.golden", []string{"gross", "50000000", "--bonus", "20000000", "--date", "2026-08-10", "--lang", "en"}},
 		{"foreigner_vi.golden", []string{"gross", "60000000", "--foreigner", "--date", "2026-08-10"}},
+		{"non_resident_en.golden", []string{"gross", "60000000", "--foreigner", "--non-resident", "-d", "1", "--date", "2026-08-10", "--lang", "en"}},
 		{"flat_vi.golden", []string{"flat", "12345675", "--date", "2026-08-15"}},
 		{"flat_en.golden", []string{"flat", "3000000", "--date", "2026-06-30", "--lang", "en"}},
 		{"annual_vi.golden", []string{"annual", "testdata/annual_job_change.json"}},
@@ -257,8 +260,14 @@ func TestRun_Warnings(t *testing.T) {
 		}
 	}
 
+	// diff prints the warnings of both periods once.
+	_, stdout, _ := runCLI("diff", "60000000", "--non-resident", "-d", "1")
+	if n := strings.Count(stdout, "[!] Cá nhân không cư trú không được giảm trừ gia cảnh"); n != 1 {
+		t.Errorf("diff: want the dependents warning once, got %d:\n%s", n, stdout)
+	}
+
 	// JSON carries the code, independent of --lang.
-	_, stdout, _ := runCLI("gross", "3000000", "--date", "2026-03-15", "--json", "--lang", "en")
+	_, stdout, _ = runCLI("gross", "3000000", "--date", "2026-03-15", "--json", "--lang", "en")
 	if !strings.Contains(stdout, `"code": "insurance_salary_below_regional_minimum"`) {
 		t.Errorf("JSON missing warning code:\n%s", stdout)
 	}

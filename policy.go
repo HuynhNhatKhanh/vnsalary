@@ -30,6 +30,10 @@ type Policy struct {
 	// Progressive PIT schedule (biểu thuế lũy tiến từng phần)
 	Brackets []TaxBracket
 
+	// Salary PIT schedule of non-residents: one bracket, a flat rate on
+	// taxable income without deductions (see Options.NonResident).
+	NonResidentBrackets []TaxBracket
+
 	// Income excluded from PIT (thu nhập không tính thuế), see Extras.
 	MealCashCap         VND  // Cash meal allowance excluded from taxable income up to this amount per month
 	MealCashCapVerified bool // False when the cap for this period could not be confirmed from a legal text
