@@ -388,7 +388,7 @@ The library is verified with a comprehensive test suite:
 ```bash
 go test -cover ./...
 ```
-Statement coverage at v0.6.0: library **97.7%**, CLI **96.4%**.
+Statement coverage at v0.6.1: library **97.7%**, CLI **96.4%**.
 
 ---
 
