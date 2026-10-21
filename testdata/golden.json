@@ -589,5 +589,23 @@
     "source": "TopCV (topcv.vn/tinh-luong-gross-net, mốc từ 01/07/2026): khớp BH, thuế, net; nhập tay ngày 2026-10-15; khớp tham chiếu Python độc lập",
     "verified_at": "2026-10-15",
     "notes": "BH = 50.000.000 × 10,5% (dưới trần BHXH/BHYT 50,6M). TNTT = 29.250.000. Thuế = 2.425.000."
+  },
+  {
+    "description": "2026-08 - foreigner, 60M, no dependents, region 1 (no unemployment insurance)",
+    "gross": 60000000,
+    "dependents": 0,
+    "region": 1,
+    "date": "2026-08-10",
+    "ins_base": 0,
+    "foreigner": true,
+    "expected_social": 4048000,
+    "expected_health": 759000,
+    "expected_unemployment": 0,
+    "expected_insurance_total": 4807000,
+    "expected_tax": 4438600,
+    "expected_net": 50754400,
+    "source": "Tính tay theo Luật BHXH 41/2024 Điều 2.2, Luật Việc làm 74/2025 Điều 2.1 (BHTN chỉ cho công dân Việt Nam), Luật Thuế TNCN 109/2025 Điều 9 — CHƯA đối chiếu công cụ ngoài",
+    "verified_at": "2026-10-21",
+    "notes": "Trần BHXH/BHYT 50,6M: BHXH 8% = 4.048.000, BHYT 1,5% = 759.000, BHTN 0. TNTT = 60M - 4.807.000 - 15,5M = 39.693.000. Thuế = 500.000 + 2.000.000 + 9.693.000 x 20% = 4.438.600. Net = 50.754.400"
   }
 ]

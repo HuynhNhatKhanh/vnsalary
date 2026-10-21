@@ -27,6 +27,16 @@ type Options struct {
 	Region        Region    // Statutory minimum wage region (1..4) (vùng lương tối thiểu)
 	Date          time.Time // Salary payment date; selects the policy in force (cash basis, Law on PIT 109/2025/QH15 Art. 8.3)
 	Extras        Extras    // Parts of gross treated differently from base salary; zero value = none
+
+	// Foreigner marks a foreign national: no unemployment insurance (BHTN) for
+	// the employee or the employer, because that insurance covers Vietnamese
+	// citizens only (Law on Employment 74/2025/QH15 Art. 2.1; Law 38/2013/QH13
+	// Art. 3.1 before 2026). Social and health insurance stay: a foreign
+	// employee on a contract of 12 months or more pays social insurance (Law on
+	// Social Insurance 41/2024/QH15 Art. 2.2). Its exemptions (intra-company
+	// transfer, retirement age at signing, treaties) are not modelled; set
+	// InsuranceBase to 0 in those cases only if health insurance is also not due.
+	Foreigner bool
 }
 
 // Extras are amounts already included in gross (gross is the total paid in the
@@ -322,6 +332,9 @@ func computeNet(policy *Policy, gross VND, opts Options) (Result, error) {
 	// 2. Mandatory employee insurance (Bảo hiểm người lao động)
 	baseSH := minVND(insSalary, policy.MaxSocialHealthSalary)
 	baseU := minVND(insSalary, policy.MaxUnemploymentSalary(opts.Region))
+	if opts.Foreigner {
+		baseU = 0 // no unemployment insurance for foreign nationals
+	}
 
 	empSocial := roundDiv(int64(baseSH)*8, 100)      // Social insurance (BHXH): 8%
 	empHealth := roundDiv(int64(baseSH)*15, 1000)    // Health insurance (BHYT): 1.5%

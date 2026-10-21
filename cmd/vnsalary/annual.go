@@ -19,6 +19,7 @@ type annualInput struct {
 	Year            int            `json:"year"`             // default: the year of the first payment
 	Region          int            `json:"region"`           // default 1; used by payments given as gross
 	Dependents      int            `json:"dependents"`       // used by payments given as gross (monthly withholding)
+	Foreigner       bool           `json:"foreigner"`        // used by payments given as gross: no unemployment insurance
 	DependentMonths *int           `json:"dependent_months"` // default: dependents × 12
 	Charity         int64          `json:"charity"`
 	Healthcare      int64          `json:"healthcare"`
@@ -200,6 +201,7 @@ func (r annualRecord) payment(in annualInput, date time.Time) (vnsalary.Payment,
 		Dependents: dependents,
 		Region:     vnsalary.Region(region),
 		Date:       date,
+		Foreigner:  in.Foreigner,
 		Extras: vnsalary.Extras{
 			Overtime:    vnsalary.VND(r.Overtime),
 			MealCash:    vnsalary.VND(r.MealCash),

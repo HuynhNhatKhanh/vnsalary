@@ -469,6 +469,8 @@ func FuzzGrossToNet_NetToGross(f *testing.F) {
 			Extras:     Extras{Overtime: VND(ot), MealCash: VND(meal), OtherExempt: VND(other), Bonus: VND(bonus)},
 		}
 
+		opts.Foreigner = gross%2 == 1 // both insurance sets, without changing the corpus format
+
 		resForward, err := GrossToNet(VND(gross), opts)
 		if errors.Is(err, ErrExtrasExceedGross) {
 			return
@@ -619,6 +621,8 @@ func TestNetSteps_ZeroOrOne(t *testing.T) {
 			{Dependents: 2, Region: Region4, Date: pol.EffectiveFrom},
 			{Dependents: 1, Region: Region1, Date: pol.EffectiveFrom, InsuranceBase: &insBase},
 			{Dependents: 1, Region: Region1, Date: pol.EffectiveFrom, Extras: Extras{Overtime: 3_333_333, MealCash: 1_500_000, OtherExempt: 777_777, Bonus: 12_345_678}},
+			{Dependents: 0, Region: Region1, Date: pol.EffectiveFrom, Foreigner: true},
+			{Dependents: 1, Region: Region2, Date: pol.EffectiveFrom, Foreigner: true, Extras: Extras{Overtime: 3_333_333, MealCash: 1_500_000, OtherExempt: 777_777, Bonus: 12_345_678}},
 		} {
 			// Walk a window around every breakpoint, where slopes and rounding change.
 			for _, bp := range computeBreakpoints(pol, opts) {
@@ -897,6 +901,35 @@ func TestNetToGross_WithExtras(t *testing.T) {
 			if below, err := GrossToNet(got.Gross-1, opts); err == nil && below.Net == want.Net {
 				t.Fatalf("%+v: gross %d not minimal", opts.Extras, got.Gross)
 			}
+		}
+	}
+}
+
+// Foreign nationals pay no unemployment insurance (employee or employer);
+// social and health insurance are unchanged.
+func TestForeigner_NoUnemploymentInsurance(t *testing.T) {
+	for _, d := range []time.Time{date(2025, 3, 10), date(2026, 3, 10), date(2026, 8, 10)} {
+		vn, err := GrossToNet(60_000_000, Options{Region: Region1, Date: d})
+		if err != nil {
+			t.Fatal(err)
+		}
+		fn, err := GrossToNet(60_000_000, Options{Region: Region1, Date: d, Foreigner: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if fn.Insurance.Unemployment != 0 || fn.Employer.Unemployment != 0 {
+			t.Errorf("%s: unemployment insurance %d / employer %d, want 0", d.Format(time.DateOnly), fn.Insurance.Unemployment, fn.Employer.Unemployment)
+		}
+		if fn.Insurance.Social != vn.Insurance.Social || fn.Insurance.Health != vn.Insurance.Health ||
+			fn.Employer.Social != vn.Employer.Social || fn.Employer.Health != vn.Employer.Health {
+			t.Errorf("%s: social or health insurance differs for a foreigner", d.Format(time.DateOnly))
+		}
+		if fn.Insurance.Total != vn.Insurance.Total-vn.Insurance.Unemployment {
+			t.Errorf("%s: employee total %d, want %d", d.Format(time.DateOnly), fn.Insurance.Total, vn.Insurance.Total-vn.Insurance.Unemployment)
+		}
+		inv, err := NetToGross(fn.Net, Options{Region: Region1, Date: d, Foreigner: true})
+		if err != nil || inv.Gross != 60_000_000 {
+			t.Errorf("%s: NetToGross(%d) = %d, %v; want 60,000,000", d.Format(time.DateOnly), fn.Net, inv.Gross, err)
 		}
 	}
 }

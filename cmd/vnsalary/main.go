@@ -12,7 +12,7 @@
 //
 // Flags: -d/--dependents, -r/--region (1..4), --date YYYY-MM-DD (payment date,
 // default today), --from/--to (for diff), --ins-base, --overtime, --meal,
-// --other-exempt, --bonus, --json, --lang vi|en.
+// --other-exempt, --bonus, --foreigner, --json, --lang vi|en.
 //
 // Exit codes: 0 success, 1 calculation error, 2 usage error.
 package main
@@ -104,6 +104,7 @@ Flags:
       --meal int            Tiền ăn giữa ca bằng tiền nằm trong số tiền (miễn thuế tới mức trần)
       --other-exempt int    Phụ cấp miễn thuế khác theo quy chế công ty (điện thoại, trang phục…)
       --bonus int           Tiền thưởng trong tháng nằm trong số tiền (chịu thuế, không đóng BH)
+      --foreigner           Người lao động nước ngoài: không đóng BHTN
       --lang string         Ngôn ngữ hiển thị: vi, en (mặc định: vi)
       --json                Xuất kết quả dạng JSON`,
 		errFlags:      "Lỗi phân tích cờ: %v",
@@ -144,6 +145,7 @@ Flags:
       --meal int            Cash meal allowance included in the amount (tax-exempt up to the cap)
       --other-exempt int    Other allowances exempt under the employer's regulation (phone, uniform...)
       --bonus int           Bonus paid this month, included in the amount (taxed, no insurance)
+      --foreigner           Foreign national: no unemployment insurance
       --lang string         Display language: vi, en (default: vi)
       --json                Print the result as JSON`,
 		errFlags:      "Error parsing flags: %v",
@@ -492,6 +494,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	meal := flags.Int64("meal", 0, "")
 	otherExempt := flags.Int64("other-exempt", 0, "")
 	bonus := flags.Int64("bonus", 0, "")
+	foreigner := flags.Bool("foreigner", false, "")
 	flags.String("lang", "vi", "") // already read by detectLang
 	asJSON := flags.Bool("json", false, "")
 
@@ -566,6 +569,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 			Dependents:    *dependents,
 			Region:        vnsalary.Region(*region),
 			Date:          d,
+			Foreigner:     *foreigner,
 			Extras: vnsalary.Extras{
 				Overtime:    vnsalary.VND(*overtime),
 				MealCash:    vnsalary.VND(*meal),
