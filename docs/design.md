@@ -32,7 +32,7 @@ disagreed between sources. A parameter set with citations is useful in itself.
 | Insurance base | gross by default, or a fixed `InsuranceBase` |
 | Family deductions | personal + per dependent |
 | PIT | progressive by bracket: 7 brackets until 2025, 5 brackets from 2026 |
-| Employer cost | BHXH 17.5% (incl. 0.5% occupational accident), BHYT 3%, BHTN 1% |
+| Employer cost | BHXH 17.5% (incl. 0.5% occupational accident, `Employer.AccidentPerMille` for an approved rate), BHYT 3%, BHTN 1%; optional 2% trade union fee (`Employer.UnionFee`) |
 | Policy by date | `Options.Date` selects the parameter set |
 | CLI | `gross`, `net`, `diff` (with `--foreigner`, `--non-resident`), `flat`, `annual` (JSON file of payments), `--json`, `--lang vi\|en` |
 | Extras (v0.3.0) | overtime, cash meal allowance, other exempt allowances and bonus inside gross; exempt income, insurance salary and the tax caused by the bonus |
@@ -340,17 +340,19 @@ and a real test of how pleasant the API is.
 | 2026-10-21 | `Options.Foreigner` drops unemployment insurance only ([#9](https://github.com/HuynhNhatKhanh/vnsalary/issues/9)) | the Law on Employment defines the employee as a Vietnamese citizen (74/2025 Art. 2.1; 38/2013 Art. 3.1); social insurance exemptions depend on facts the library does not have (contract length, transfer status, age at signing), so they are documented, not modelled |
 | 2026-10-21 | Non-resident rate as a one-bracket schedule, `Policy.NonResidentBrackets` ([#8](https://github.com/HuynhNhatKhanh/vnsalary/issues/8)) | reuses the bracket code and its rounding; a future change of rate is a policy edit |
 | 2026-10-21 | `NetToGross` searches a 32 VND window below the first match for non-residents only | with extras their net can fall by 1 VND, so grosses with one net need not be contiguous; residents keep the one-step walk, proven by `TestNetSteps_ZeroOrOne`, and its speed |
+| 2026-10-21 | Employer accident rate and union fee in `Options.Employer`, rates in `Policy` (thousandths) | they change the employer's cost only; the zero value keeps earlier results; a 2027 rate becomes a policy edit. The union fee is off by default because callers compare `TotalCost` across versions |
+| 2026-10-21 | Union fee on the capped social insurance salary | the law's base is the "salary fund used for compulsory social insurance", which is capped at 20 × the reference level |
 | 2026-10-21 | Residence and nationality are separate options | a foreigner can be a tax resident and a Vietnamese citizen a non-resident; insurance follows nationality, tax follows residence |
 | 2026-10-20 | `FlatWithholding` computes tax only; below the threshold `Withheld` is 0 | withholding on request and the deferral commitment are the individual's choice; insurance depends on the contract, not on the tax rule |
 
 ## 12. Known gaps
 
-Simplifications in v0.1.0 that affect real payrolls are listed under
-"Limitations" in the README. Those with a planned fix are tracked as issues:
-configurable employer accident insurance rate
-([#10](https://github.com/HuynhNhatKhanh/vnsalary/issues/10)) and the optional
-trade union fee ([#11](https://github.com/HuynhNhatKhanh/vnsalary/issues/11)).
-The region is the place of work; that is a documentation point, not a gap in
+Simplifications that affect real payrolls are listed under "Limitations" in
+the README. The employer accident insurance rate and the trade union fee are
+options since v0.6.0 ([#10](https://github.com/HuynhNhatKhanh/vnsalary/issues/10),
+[#11](https://github.com/HuynhNhatKhanh/vnsalary/issues/11)); a decree lowering
+the accident rate for all employers is in draft and will become a policy when
+issued. The region is the place of work; that is a documentation point, not a gap in
 the calculation.
 
 ## 13. Roadmap
@@ -394,9 +396,6 @@ outside these milestones.
   from tax period 2026. The library uses 2026-07-01 for withholding, which
   happens at payment time; the choice only moves tax between withholding and
   finalization, not the year's total.
-- **Amending law 09/2026/QH16** (April 2026) changes the PIT revenue threshold
-  for business income; whether it touches Articles 9–10 of Law 109/2025 (salary
-  brackets and deductions) has not been confirmed from the full text.
 
 ## 15. Legal sources checked
 
@@ -428,5 +427,8 @@ Checked against the full texts or official publications on 2026-10-13; the rows 
 | 10% withholding from 2,000,000 per payment before 2026-07-01 | Circular 111/2013/TT-BTC Art. 25.1.i |
 | Non-residents: 20% of salary income from work in Vietnam, determined as for residents, no deductions | Decree 253/2026/NĐ-CP Art. 64.1–2 (Công báo No. 402); Law on PIT 2007 Art. 26.1, Circular 111/2013/TT-BTC Art. 18 before 2026 |
 | Resident: 183 days in the calendar year or 12 consecutive months, or a regular place to stay | Decree 253/2026/NĐ-CP Art. 4, 5 |
+| Employer occupational accident insurance 0.5%; 0.3% when approved | Decree 58/2020/NĐ-CP Art. 4.1.a, amended by Decree 158/2025/NĐ-CP (a draft would set 0.3% for all employers in 2027; not issued as of 2026-10-21) |
+| Trade union fee 2% of the salary fund for compulsory social insurance, with or without a grassroots union | Law on Trade Unions 50/2024/QH15 Art. 29.1.b, amended by Law 97/2025/QH15 Art. 2.8; Decree 105/2026/NĐ-CP (from 2026-05-16); Law 2012 Art. 26.2 and Decree 191/2013 Art. 5 before 2025-07-01 (secondary sources: full texts not reachable) |
+| Law 09/2026/QH16 amends only Art. 7.1 of the PIT law (business revenue threshold); Resolution 43/2026/QH16 cuts 30% of PIT on business income in 2026–2027 — neither touches salary income | LuatVietnam summary of Law 09/2026; Resolution 43/2026/QH16 coverage (checked 2026-10-21) |
 | Unemployment insurance covers Vietnamese citizens only | Law on Employment 74/2025/QH15 Art. 2.1, Art. 31 (full text, xaydungchinhsach.chinhphu.vn); Law 38/2013/QH13 Art. 3.1, Art. 43 before 2026 |
 | Foreign employees on contracts of 12 months or more pay social insurance, except intra-company transfers, retirement age at signing, treaties | Law 41/2024/QH15 Art. 2.2 (Công báo No. 987+988, 2024-08-25); Decree 143/2018/NĐ-CP before 2025-07-01 |

@@ -195,6 +195,24 @@ fmt.Println(res.Tax, res.Net) // 12000000 43193000
 
 `NonResident` chỉ đổi phần thuế; người nước ngoài thì dùng kèm `Foreigner`. `NetToGross` vẫn trả về gross nhỏ nhất: khi có các khoản Extras, net của người không cư trú có thể giảm 1đ dù gross tăng (thuế phẳng không giảm khi bảo hiểm tăng), nên thư viện tìm trong cửa sổ 32đ phía dưới kết quả đầu tiên.
 
+### 9. Tùy Chọn Chi Phí Công Ty
+
+`Options.Employer` chỉ đổi chi phí của công ty, không đổi lương net của người lao động:
+
+```go
+rate := int64(3) // 0,3%, nếu công ty được duyệt mức đóng TNLĐ-BNN thấp hơn
+res, _ := vnsalary.GrossToNet(30_000_000, vnsalary.Options{
+	Region: vnsalary.Region1, Date: time.Date(2026, 8, 10, 0, 0, 0, 0, time.UTC),
+	Employer: vnsalary.EmployerOptions{AccidentPerMille: &rate, UnionFee: true},
+})
+fmt.Println(res.Employer.Social, res.Employer.UnionFee) // 5190000 600000
+```
+
+| Tùy chọn | Mặc định | Căn cứ |
+| :--- | :--- | :--- |
+| `AccidentPerMille` | 5 (0,5%) bảo hiểm TNLĐ-BNN, nằm trong BHXH phần công ty | NĐ 58/2020 Điều 4.1.a; 0,3% khi được chấp thuận |
+| `UnionFee` | tắt; khi bật, cộng 2% lương đóng BHXH vào `TotalCost` | Luật Công đoàn 50/2024 Điều 29.1.b; phải đóng dù chưa có công đoàn cơ sở |
+
 ---
 
 ## 📊 Bảng Căn Cứ Pháp Lý (2024 vs 2026)
@@ -247,8 +265,7 @@ vnsalary áp dụng cho **người lao động có hợp đồng lao động, c�
 - **Các khoản miễn thuế được nhận như người dùng truyền vào.** `Extras.Overtime` phải là tiền làm thêm trong giới hạn giờ luật cho phép (phần vượt giới hạn chỉ để trong gross), và mức của `Extras.OtherExempt` (điện thoại, trang phục…) theo quy chế công ty; thư viện không kiểm các mức này.
 - **Chưa hỗ trợ:** với người nước ngoài, các trường hợp được loại trừ khỏi BHXH (di chuyển nội bộ, đủ tuổi nghỉ hưu, điều ước quốc tế); với người không cư trú làm việc cả trong và ngoài Việt Nam, việc chia thu nhập theo số ngày ở Việt Nam (NĐ 253/2026 Điều 64.3): hãy truyền phần thu nhập tại Việt Nam.
 - **Lương đóng bảo hiểm thấp hơn lương tối thiểu vùng vẫn được tính, kèm cảnh báo.** Người làm toàn thời gian phải được trả ít nhất mức này, nên `Result.Warnings` báo mã `insurance_salary_below_regional_minimum` (CLI in dòng `[!]`). Đây không phải lỗi vì hợp đồng bán thời gian có thể thấp hơn hợp pháp.
-- **Tỉ lệ TNLĐ-BNN của công ty cố định 0,5%**, nên BHXH phần công ty luôn là 17,5%. Một số doanh nghiệp đóng 0,3%.
-- **Kinh phí công đoàn 2% không nằm trong `Employer.TotalCost`.** Đây không phải bảo hiểm, nhưng công ty vẫn phải đóng.
+- **Tỉ lệ TNLĐ-BNN của công ty mặc định 0,5%** và **kinh phí công đoàn 2% mặc định tắt**; dùng `Options.Employer` (CLI `--accident-rate`, `--union-fee`) cho đúng với công ty.
 - **Vùng lương tính theo nơi người lao động làm việc**, không theo trụ sở công ty hay nơi ở. Thư viện không tự suy ra vùng; hãy truyền đúng vùng nơi làm việc.
 
 Các tính năng dự kiến được theo dõi trong [milestones](https://github.com/HuynhNhatKhanh/vnsalary/milestones); mọi ý tưởng và yêu cầu đều có thể mở issue.
@@ -297,6 +314,7 @@ vnsalary gross 55000000 --overtime 5000000 --meal 1500000 --other-exempt 800000 
 ```bash
 vnsalary gross 60000000 --foreigner --date 2026-08-10                # không đóng BHTN
 vnsalary gross 60000000 --foreigner --non-resident --date 2026-08-10 # thuế phẳng 20%, không giảm trừ
+vnsalary gross 30000000 --accident-rate 0.3 --union-fee              # chi phí công ty với TNLĐ 0,3% và kinh phí công đoàn 2%
 ```
 
 #### Khấu trừ 10%

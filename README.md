@@ -195,6 +195,24 @@ fmt.Println(res.Tax, res.Net) // 12000000 43193000
 
 `NonResident` changes tax only; combine it with `Foreigner` for a foreign national. `NetToGross` still returns the smallest gross: with extras, a non-resident's net can fall by 1 VND as gross rises (the flat tax does not shrink when insurance grows), so it searches a 32 VND window below the first match.
 
+### 9. Employer Cost Options
+
+`Options.Employer` changes the employer's cost only, never the employee's net:
+
+```go
+rate := int64(3) // 0.3%, if your accident insurance rate was approved
+res, _ := vnsalary.GrossToNet(30_000_000, vnsalary.Options{
+	Region: vnsalary.Region1, Date: time.Date(2026, 8, 10, 0, 0, 0, 0, time.UTC),
+	Employer: vnsalary.EmployerOptions{AccidentPerMille: &rate, UnionFee: true},
+})
+fmt.Println(res.Employer.Social, res.Employer.UnionFee) // 5190000 600000
+```
+
+| Option | Default | Basis |
+| :--- | :--- | :--- |
+| `AccidentPerMille` | 5 (0.5%) occupational accident insurance, part of employer social insurance | Decree 58/2020 Art. 4.1.a; 0.3% when approved |
+| `UnionFee` | off; when set, 2% of the social insurance salary is added to `TotalCost` | Law on Trade Unions 50/2024 Art. 29.1.b; due with or without a grassroots union |
+
 ---
 
 ## 📊 Legal Reference & Policy Comparison
@@ -245,8 +263,7 @@ vnsalary covers **employees on labour contracts, resident or not, Vietnamese or 
 - **Exempt allowances are taken as given.** `Extras.Overtime` must be pay for hours within the legal limits (pay for extra hours belongs in gross only), and the limits of `Extras.OtherExempt` (phone, uniform, …) follow your employer's regulation; the library does not check them.
 - **Not covered:** for foreign employees, the social insurance exemptions (intra-company transfer, retirement age, treaties); for non-residents working in and outside Vietnam, splitting income by days in Vietnam (Decree 253/2026 Art. 64.3): pass the Vietnam part.
 - **An insurance salary below the regional minimum wage is computed as given, with a warning.** A full-time employee must be paid at least that minimum, so `Result.Warnings` reports code `insurance_salary_below_regional_minimum` (the CLI prints it with `[!]`). It is not an error because part-time contracts can legally be lower.
-- **Employer accident insurance is fixed at 0.5%**, so employer social insurance is always 17.5%. Some employers pay 0.3%.
-- **The 2% trade union fee is not in `Employer.TotalCost`.** It is not insurance, but the employer pays it.
+- **Employer accident insurance defaults to 0.5%** and the **2% trade union fee is off by default**; set `Options.Employer` (CLI `--accident-rate`, `--union-fee`) to match your employer.
 - **Region is the place of work**, not the head office or the employee's home. The library does not infer it; pass the region where the employee works.
 
 Planned work is tracked in the [milestones](https://github.com/HuynhNhatKhanh/vnsalary/milestones); ideas and requests are welcome as issues.
@@ -295,6 +312,7 @@ vnsalary gross 55000000 --overtime 5000000 --meal 1500000 --other-exempt 800000 
 ```bash
 vnsalary gross 60000000 --foreigner --date 2026-08-10                # no unemployment insurance
 vnsalary gross 60000000 --foreigner --non-resident --date 2026-08-10 # 20% flat, no deductions
+vnsalary gross 30000000 --accident-rate 0.3 --union-fee              # employer cost with 0.3% accident insurance and the 2% union fee
 ```
 
 #### 10% withholding

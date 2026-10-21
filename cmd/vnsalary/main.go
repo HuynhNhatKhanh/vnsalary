@@ -12,7 +12,8 @@
 //
 // Flags: -d/--dependents, -r/--region (1..4), --date YYYY-MM-DD (payment date,
 // default today), --from/--to (for diff), --ins-base, --overtime, --meal,
-// --other-exempt, --bonus, --foreigner, --non-resident, --json, --lang vi|en.
+// --other-exempt, --bonus, --foreigner, --non-resident, --accident-rate,
+// --union-fee, --json, --lang vi|en.
 //
 // Exit codes: 0 success, 1 calculation error, 2 usage error.
 package main
@@ -79,6 +80,7 @@ type messages struct {
 	errPayment    string
 	errFlagUnused string
 	errExtraArgs  string
+	errBadRate    string
 }
 
 var msgs = map[string]messages{
@@ -106,6 +108,8 @@ Flags:
       --bonus int           Tiền thưởng trong tháng nằm trong số tiền (chịu thuế, không đóng BH)
       --foreigner           Người lao động nước ngoài: không đóng BHTN
       --non-resident        Cá nhân không cư trú: thuế 20%, không giảm trừ
+      --accident-rate %     Tỉ lệ BH TNLĐ-BNN công ty được duyệt, ví dụ 0.3 (mặc định 0.5)
+      --union-fee           Cộng kinh phí công đoàn 2% vào chi phí công ty
       --lang string         Ngôn ngữ hiển thị: vi, en (mặc định: vi)
       --json                Xuất kết quả dạng JSON`,
 		errFlags:      "Lỗi phân tích cờ: %v",
@@ -123,6 +127,7 @@ Flags:
 		errPayment:    "Lỗi ở lần chi trả %d (%s): %v",
 		errFlagUnused: "Lỗi: lệnh %s không dùng cờ -%s",
 		errExtraArgs:  "Lỗi: tham số thừa: %s",
+		errBadRate:    "Lỗi: --accident-rate nhận phần trăm 0..1 với tối đa 1 chữ số thập phân, ví dụ 0.3 (nhận được %q)",
 	},
 	"en": {
 		usage: `vnsalary — Vietnam Gross ↔ Net salary calculator
@@ -148,6 +153,8 @@ Flags:
       --bonus int           Bonus paid this month, included in the amount (taxed, no insurance)
       --foreigner           Foreign national: no unemployment insurance
       --non-resident        Non-resident for PIT: 20%, no deductions
+      --accident-rate %     Approved employer accident insurance rate, e.g. 0.3 (default 0.5)
+      --union-fee           Add the 2% trade union fee to the employer cost
       --lang string         Display language: vi, en (default: vi)
       --json                Print the result as JSON`,
 		errFlags:      "Error parsing flags: %v",
@@ -165,6 +172,7 @@ Flags:
 		errPayment:    "Error in payment %d (%s): %v",
 		errFlagUnused: "Error: the %s command does not use -%s",
 		errExtraArgs:  "Error: unexpected arguments: %s",
+		errBadRate:    "Error: --accident-rate takes a percentage from 0 to 1 with at most one decimal, e.g. 0.3 (got %q)",
 	},
 }
 
@@ -193,6 +201,27 @@ func errorf(w io.Writer, code int, format string, args ...any) int {
 
 func printUsage(w io.Writer, lang string) {
 	fmt.Fprintln(w, msgs[lang].usage)
+}
+
+// parsePerMille reads a percentage from 0 to 1 with at most one decimal
+// ("0.5", "0.3", "0") as thousandths, without floating point.
+func parsePerMille(s string) (int64, bool) {
+	whole, frac, hasFrac := strings.Cut(s, ".")
+	if whole == "" || len(frac) > 1 || (hasFrac && frac == "") || strings.ContainsAny(s, "+-") {
+		return 0, false
+	}
+	w, err := strconv.ParseInt(whole, 10, 64)
+	if err != nil || w < 0 || w > 1 {
+		return 0, false
+	}
+	var f int64
+	if hasFrac {
+		if f, err = strconv.ParseInt(frac, 10, 64); err != nil || f < 0 {
+			return 0, false
+		}
+	}
+	v := w*10 + f
+	return v, v <= 10
 }
 
 // formatVND formats an amount as "35.000.000 đ" (vi) or "35,000,000 VND" (en).
@@ -263,8 +292,12 @@ func printTable(w io.Writer, r vnsalary.Result, lang string) {
 		fmt.Fprintln(w, "=================================================================")
 		fmt.Fprintf(w, " NET TAKE-HOME PAY: %s\n", formatVND(r.Net, lang))
 		fmt.Fprintln(w, "=================================================================")
-		fmt.Fprintf(w, " Employer Cost: %s (Gross + Employer Insurance %s)\n",
+		fmt.Fprintf(w, " Employer Cost: %s (Gross + Employer Insurance %s",
 			formatVND(r.Employer.TotalCost, lang), formatVND(r.Employer.TotalInsurance, lang))
+		if r.Employer.UnionFee > 0 {
+			fmt.Fprintf(w, " + Trade Union Fee %s", formatVND(r.Employer.UnionFee, lang))
+		}
+		fmt.Fprintln(w, ")")
 		fmt.Fprintf(w, " Applied Policy: %s\n", r.Policy.Description)
 		printWarnings(w, r.Warnings, lang)
 		return
@@ -302,8 +335,12 @@ func printTable(w io.Writer, r vnsalary.Result, lang string) {
 	fmt.Fprintln(w, "=================================================================")
 	fmt.Fprintf(w, " LƯƠNG NET THỰC NHẬN: %s\n", formatVND(r.Net, lang))
 	fmt.Fprintln(w, "=================================================================")
-	fmt.Fprintf(w, " Chi phí người sử dụng lao động: %s (Gross + Bảo hiểm NSDLĐ %s)\n",
+	fmt.Fprintf(w, " Chi phí người sử dụng lao động: %s (Gross + Bảo hiểm NSDLĐ %s",
 		formatVND(r.Employer.TotalCost, lang), formatVND(r.Employer.TotalInsurance, lang))
+	if r.Employer.UnionFee > 0 {
+		fmt.Fprintf(w, " + Kinh phí công đoàn %s", formatVND(r.Employer.UnionFee, lang))
+	}
+	fmt.Fprintln(w, ")")
 	desc := r.Policy.DescriptionVI
 	if desc == "" {
 		desc = r.Policy.Description
@@ -517,6 +554,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 	bonus := flags.Int64("bonus", 0, "")
 	foreigner := flags.Bool("foreigner", false, "")
 	nonResident := flags.Bool("non-resident", false, "")
+	accidentRate := flags.String("accident-rate", "", "")
+	unionFee := flags.Bool("union-fee", false, "")
 	flags.String("lang", "vi", "") // already read by detectLang
 	asJSON := flags.Bool("json", false, "")
 
@@ -532,6 +571,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		"-meal": true, "--meal": true,
 		"-other-exempt": true, "--other-exempt": true,
 		"-bonus": true, "--bonus": true,
+		"-accident-rate": true, "--accident-rate": true,
 		"-lang": true, "--lang": true,
 	}
 	rawArgs := args[1:]
@@ -580,6 +620,15 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return errorf(stderr, 2, m.errBadAmount, amountStr)
 	}
 
+	var accident *int64
+	if *accidentRate != "" {
+		v, ok := parsePerMille(*accidentRate)
+		if !ok {
+			return errorf(stderr, 2, m.errBadRate, *accidentRate)
+		}
+		accident = &v
+	}
+
 	var insBase *vnsalary.VND
 	if *insBaseFlag != 0 { // a negative value is rejected by the library, not ignored
 		v := vnsalary.VND(*insBaseFlag)
@@ -593,6 +642,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 			Date:          d,
 			Foreigner:     *foreigner,
 			NonResident:   *nonResident,
+			Employer:      vnsalary.EmployerOptions{AccidentPerMille: accident, UnionFee: *unionFee},
 			Extras: vnsalary.Extras{
 				Overtime:    vnsalary.VND(*overtime),
 				MealCash:    vnsalary.VND(*meal),

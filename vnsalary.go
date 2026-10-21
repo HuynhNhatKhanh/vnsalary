@@ -45,6 +45,24 @@ type Options struct {
 	// consecutive months, or has a regular place to stay there (Decree
 	// 253/2026/NĐ-CP Art. 4); the caller decides. Insurance is unchanged.
 	NonResident bool
+
+	// Employer holds employer-side settings that change EmployerCost only;
+	// the zero value keeps earlier results.
+	Employer EmployerOptions
+}
+
+// EmployerOptions are settings of the employer that change its cost but not
+// the employee's net.
+type EmployerOptions struct {
+	// AccidentPerMille overrides the occupational accident insurance rate, in
+	// thousandths (3 = 0.3%, approved for some employers under Decree
+	// 58/2020/NĐ-CP); nil = the policy rate (0.5%). Allowed: 0 to 10.
+	AccidentPerMille *int64
+
+	// UnionFee adds the trade union fee (2% of the social insurance salary,
+	// Law on Trade Unions 50/2024/QH15 Art. 29.1.b) to EmployerCost.TotalCost.
+	// Employers pay it whether or not they have a grassroots union.
+	UnionFee bool
 }
 
 // Extras are amounts already included in gross (gross is the total paid in the
@@ -99,11 +117,12 @@ type BracketLine struct {
 
 // EmployerCost itemizes statutory employer contributions and total company expenditure.
 type EmployerCost struct {
-	Social         VND `json:"social"`          // Social insurance (BHXH) 17.5% (14% pension/death, 3% sickness/maternity, 0.5% occupational accident)
-	Health         VND `json:"health"`          // Health insurance (BHYT) 3%
-	Unemployment   VND `json:"unemployment"`    // Unemployment insurance (BHTN) 1%
-	TotalInsurance VND `json:"total_insurance"` // Total employer contribution (21.5%)
-	TotalCost      VND `json:"total_cost"`      // Total employer cost = Gross + TotalInsurance
+	Social         VND `json:"social"`              // Social insurance (BHXH) 17.5% (14% pension/death, 3% sickness/maternity, 0.5% occupational accident)
+	Health         VND `json:"health"`              // Health insurance (BHYT) 3%
+	Unemployment   VND `json:"unemployment"`        // Unemployment insurance (BHTN) 1%
+	TotalInsurance VND `json:"total_insurance"`     // Total employer contribution (21.5%)
+	UnionFee       VND `json:"union_fee,omitempty"` // Trade union fee (2%), when EmployerOptions.UnionFee is set
+	TotalCost      VND `json:"total_cost"`          // Total employer cost = Gross + TotalInsurance + UnionFee
 }
 
 // PolicyRef provides references to statutory decrees and enacted legislation.
@@ -266,6 +285,9 @@ func validateOptions(opts Options) error {
 			return err
 		}
 	}
+	if r := opts.Employer.AccidentPerMille; r != nil && (*r < 0 || *r > 10) {
+		return ErrInvalidAccidentRate
+	}
 	for _, v := range []VND{opts.Extras.Overtime, opts.Extras.MealCash, opts.Extras.OtherExempt, opts.Extras.Bonus} {
 		if err := checkAmount(v); err != nil {
 			return err
@@ -381,10 +403,18 @@ func computeNet(policy *Policy, gross VND, opts Options) (Result, error) {
 	}
 
 	// 3. Mandatory employer contributions (Chi phí người sử dụng lao động)
-	emprSocial := roundDiv(int64(baseSH)*175, 1000)   // Employer social insurance (BHXH): 17.5%
-	emprHealth := roundDiv(int64(baseSH)*3, 100)      // Employer health insurance (BHYT): 3%
-	emprUnemployment := roundDiv(int64(baseU)*1, 100) // Employer unemployment insurance (BHTN): 1%
+	accident := policy.AccidentPerMille // occupational accident insurance, part of employer BHXH
+	if opts.Employer.AccidentPerMille != nil {
+		accident = *opts.Employer.AccidentPerMille
+	}
+	emprSocial := roundDiv(int64(baseSH)*(170+accident), 1000) // Employer social insurance (BHXH): 17% + accident (0.5%)
+	emprHealth := roundDiv(int64(baseSH)*3, 100)               // Employer health insurance (BHYT): 3%
+	emprUnemployment := roundDiv(int64(baseU)*1, 100)          // Employer unemployment insurance (BHTN): 1%
 	totalEmprInsurance := emprSocial + emprHealth + emprUnemployment
+	var unionFee VND
+	if opts.Employer.UnionFee {
+		unionFee = roundDiv(int64(baseSH)*policy.UnionFeePerMille, 1000) // on the social insurance salary
+	}
 
 	// 4. Taxable income (Thu nhập chịu thuế)
 	taxableIncome := gross - exemptIncome(policy, opts.Extras).Total
@@ -413,7 +443,8 @@ func computeNet(policy *Policy, gross VND, opts Options) (Result, error) {
 			Health:         emprHealth,
 			Unemployment:   emprUnemployment,
 			TotalInsurance: totalEmprInsurance,
-			TotalCost:      gross + totalEmprInsurance,
+			UnionFee:       unionFee,
+			TotalCost:      gross + totalEmprInsurance + unionFee,
 		},
 		Policy: policy.Ref,
 	}, nil
