@@ -43,6 +43,9 @@ var (
 	// ErrInsuranceExceedsGross indicates that the mandatory employee insurance contribution exceeds the gross salary.
 	ErrInsuranceExceedsGross = errors.New("vnsalary: insurance contribution exceeds gross salary")
 
+	// ErrInvalidAccidentRate indicates that EmployerOptions.AccidentPerMille is outside [0, 10].
+	ErrInvalidAccidentRate = errors.New("vnsalary: accident insurance rate must be between 0 and 10 per mille")
+
 	// ErrYearOutOfRange indicates that Annual was asked for a tax year before FirstAnnualYear.
 	ErrYearOutOfRange = errors.New("vnsalary: tax year must be 2025 or later")
 

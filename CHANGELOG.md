@@ -14,6 +14,24 @@ Entries that change computed amounts are marked **(results change)**.
 
 ## [Unreleased]
 
+### Added
+
+- `Options.Employer` (`EmployerOptions`): `AccidentPerMille` overrides the
+  employer occupational accident insurance rate (0.5% by default; 0.3% when
+  approved, Decree 58/2020/NĐ-CP)
+  ([#10](https://github.com/HuynhNhatKhanh/vnsalary/issues/10)), and
+  `UnionFee` adds the 2% trade union fee on the social insurance salary to
+  `Employer.TotalCost` (Law on Trade Unions 50/2024/QH15 Art. 29.1.b)
+  ([#11](https://github.com/HuynhNhatKhanh/vnsalary/issues/11)). Both change
+  the employer's cost only. `EmployerCost.UnionFee`;
+  `Policy.AccidentPerMille`, `Policy.UnionFeePerMille`;
+  `ErrInvalidAccidentRate`. CLI `--accident-rate`, `--union-fee`.
+
+### Changed
+
+- design.md: the open question on Law 09/2026/QH16 is closed; it and
+  Resolution 43/2026/QH16 do not touch salary income.
+
 ## [0.5.0] - 2026-10-21
 
 No change in any computed amount for existing inputs. New: 10% withholding,

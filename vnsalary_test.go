@@ -554,6 +554,10 @@ func TestPoliciesInvariants(t *testing.T) {
 		if last.RateNumerator*100/last.RateDenom != 35 {
 			t.Errorf("policy %s: top bracket must be 35%%", p.Ref.EffectiveFrom)
 		}
+		// 5b. Employer rates in thousandths: accident within what EmployerOptions accepts.
+		if p.AccidentPerMille < 0 || p.AccidentPerMille > 10 || p.UnionFeePerMille <= 0 {
+			t.Errorf("policy %s: accident %d‰ or union fee %d‰ out of range", p.Ref.EffectiveFrom, p.AccidentPerMille, p.UnionFeePerMille)
+		}
 		// 5. Each policy must declare statutory decree sources.
 		if len(p.Ref.Sources) == 0 {
 			t.Errorf("policy %s has no sources", p.Ref.EffectiveFrom)
@@ -1049,4 +1053,51 @@ func TestSmallestGross_CrossesStepDown(t *testing.T) {
 		return
 	}
 	t.Fatal("no 1 VND step down found; the test no longer exercises the case")
+}
+
+// Employer options change only the employer's cost, never the employee's net.
+func TestEmployerOptions(t *testing.T) {
+	rate := func(v int64) *int64 { return &v }
+	d := date(2026, 8, 10)
+	base, err := GrossToNet(30_000_000, Options{Region: Region1, Date: d})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if base.Employer.Social != 5_250_000 || base.Employer.UnionFee != 0 {
+		t.Fatalf("default: social %d, union fee %d; want 5,250,000 and 0", base.Employer.Social, base.Employer.UnionFee)
+	}
+
+	res, err := GrossToNet(30_000_000, Options{Region: Region1, Date: d, Employer: EmployerOptions{AccidentPerMille: rate(3), UnionFee: true}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 17.3% and 2% of 30,000,000.
+	if res.Employer.Social != 5_190_000 || res.Employer.UnionFee != 600_000 {
+		t.Errorf("got social %d, union fee %d; want 5,190,000 and 600,000", res.Employer.Social, res.Employer.UnionFee)
+	}
+	if want := res.Gross + res.Employer.TotalInsurance + res.Employer.UnionFee; res.Employer.TotalCost != want {
+		t.Errorf("total cost %d, want %d", res.Employer.TotalCost, want)
+	}
+	if res.Net != base.Net || res.Tax != base.Tax || res.Insurance != base.Insurance {
+		t.Error("employer options changed the employee's side")
+	}
+
+	// The fee follows the social insurance salary, capped at 50,600,000.
+	high, err := GrossToNet(100_000_000, Options{Region: Region1, Date: d, Employer: EmployerOptions{UnionFee: true, AccidentPerMille: rate(0)}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if high.Employer.UnionFee != 1_012_000 || high.Employer.Social != 8_602_000 {
+		t.Errorf("capped: union fee %d, social %d; want 1,012,000 and 8,602,000", high.Employer.UnionFee, high.Employer.Social)
+	}
+
+	for _, bad := range []int64{-1, 11} {
+		opts := Options{Region: Region1, Date: d, Employer: EmployerOptions{AccidentPerMille: rate(bad)}}
+		if _, err := GrossToNet(30_000_000, opts); !errors.Is(err, ErrInvalidAccidentRate) {
+			t.Errorf("rate %d: GrossToNet got %v", bad, err)
+		}
+		if _, err := NetToGross(25_000_000, opts); !errors.Is(err, ErrInvalidAccidentRate) {
+			t.Errorf("rate %d: NetToGross got %v", bad, err)
+		}
+	}
 }

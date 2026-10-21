@@ -65,6 +65,11 @@ func TestRun_ExitCodesAndMessages(t *testing.T) {
 		{"flat below threshold", []string{"flat", "4000000", "--date", "2026-08-01", "--lang", "en"}, 0, "Below the threshold", ""},
 		{"foreigner net", []string{"net", "50754400", "--foreigner", "--date", "2026-08-10"}, 0, "LƯƠNG GROSS: 60.000.000 đ", ""},
 		{"non-resident net", []string{"net", "43193000", "--foreigner", "--non-resident", "--date", "2026-08-10"}, 0, "LƯƠNG GROSS: 60.000.000 đ", ""},
+		{"accident rate", []string{"gross", "30000000", "--accident-rate", "0.3", "--union-fee", "--date", "2026-08-10", "--lang", "en"}, 0, "+ Trade Union Fee 600,000 VND)", ""},
+		{"bad accident rate", []string{"gross", "30000000", "--accident-rate", "1.5"}, 2, "", "--accident-rate"},
+		{"empty accident rate", []string{"gross", "30000000", "--accident-rate="}, 2, "", `(nhận được "")`},
+		{"bad accident rate decimals", []string{"gross", "30000000", "--accident-rate", "0.25"}, 2, "", `"0.25"`},
+		{"flat rejects union fee", []string{"flat", "8000000", "--union-fee"}, 2, "", "lệnh flat không dùng cờ -union-fee"},
 		{"flat rejects non-resident", []string{"flat", "8000000", "--non-resident"}, 2, "", "lệnh flat không dùng cờ -non-resident"},
 		{"flat rejects foreigner", []string{"flat", "8000000", "--foreigner"}, 2, "", "lệnh flat không dùng cờ -foreigner"},
 		{"flat rejects unused flag", []string{"flat", "8000000", "--bonus", "1000000"}, 2, "", "lệnh flat không dùng cờ -bonus"},
@@ -204,6 +209,7 @@ func TestRun_Golden(t *testing.T) {
 		{"extras_vi.golden", []string{"gross", "55000000", "-d", "1", "--overtime", "5000000", "--meal", "1500000", "--other-exempt", "800000", "--bonus", "10000000", "--date", "2026-08-10"}},
 		{"extras_en.golden", []string{"gross", "50000000", "--bonus", "20000000", "--date", "2026-08-10", "--lang", "en"}},
 		{"foreigner_vi.golden", []string{"gross", "60000000", "--foreigner", "--date", "2026-08-10"}},
+		{"employer_vi.golden", []string{"gross", "30000000", "--accident-rate", "0.3", "--union-fee", "--date", "2026-08-10"}},
 		{"non_resident_en.golden", []string{"gross", "60000000", "--foreigner", "--non-resident", "-d", "1", "--date", "2026-08-10", "--lang", "en"}},
 		{"flat_vi.golden", []string{"flat", "12345675", "--date", "2026-08-15"}},
 		{"flat_en.golden", []string{"flat", "3000000", "--date", "2026-06-30", "--lang", "en"}},
@@ -438,3 +444,16 @@ func TestRun_AnnualGrossDefaultsAndOverrides(t *testing.T) {
 }
 
 func ptr[T any](v T) *T { return &v }
+
+func TestParsePerMille(t *testing.T) {
+	for in, want := range map[string]int64{"0": 0, "0.3": 3, "0.5": 5, "1": 10, "1.0": 10} {
+		if got, ok := parsePerMille(in); !ok || got != want {
+			t.Errorf("parsePerMille(%q) = %d, %v; want %d", in, got, ok, want)
+		}
+	}
+	for _, in := range []string{"", ".", "0.", ".3", "0.25", "1.1", "2", "-0.3", "a", "0.a"} {
+		if _, ok := parsePerMille(in); ok {
+			t.Errorf("parsePerMille(%q) accepted", in)
+		}
+	}
+}

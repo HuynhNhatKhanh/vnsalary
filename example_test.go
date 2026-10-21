@@ -198,3 +198,25 @@ func ExampleFlatWithholding() {
 	// Withheld: 800000 Net: 7200000
 	// Balance at finalization: -800000
 }
+
+// An employer approved for the 0.3% accident insurance rate, including the 2%
+// trade union fee in its cost. The employee's net is unchanged.
+func ExampleEmployerOptions() {
+	rate := int64(3) // 0.3%
+	res, err := vnsalary.GrossToNet(30_000_000, vnsalary.Options{
+		Region:   vnsalary.Region1,
+		Date:     time.Date(2026, 8, 10, 0, 0, 0, 0, time.UTC),
+		Employer: vnsalary.EmployerOptions{AccidentPerMille: &rate, UnionFee: true},
+	})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("Employer social insurance:", res.Employer.Social)
+	fmt.Println("Trade union fee:          ", res.Employer.UnionFee)
+	fmt.Println("Total employer cost:      ", res.Employer.TotalCost)
+	// Output:
+	// Employer social insurance: 5190000
+	// Trade union fee:           600000
+	// Total employer cost:       36990000
+}

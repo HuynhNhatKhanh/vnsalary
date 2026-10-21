@@ -47,6 +47,16 @@ type Policy struct {
 	// Payments of this amount or more to a resident without a labour contract
 	// or with one under 3 months are withheld at 10% (see FlatWithholding).
 	FlatWithholdingThreshold VND
+
+	// Employer occupational accident and disease insurance (TNLĐ-BNN), in
+	// thousandths of the social insurance salary (5 = 0.5%); part of the
+	// employer's social insurance. EmployerOptions.AccidentPerMille overrides it.
+	AccidentPerMille int64
+
+	// Trade union fee (kinh phí công đoàn) paid by the employer, in
+	// thousandths of the social insurance salary (20 = 2%); added to
+	// EmployerCost only when EmployerOptions.UnionFee is set.
+	UnionFeePerMille int64
 }
 
 // MaxUnemploymentSalary returns the statutory cap for unemployment insurance (20 x regional minimum wage).
