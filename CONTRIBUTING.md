@@ -113,3 +113,9 @@ are released as MINOR and listed under **Breaking** in the CHANGELOG.
 4. Request the version on the module proxy so pkg.go.dev picks it up:
    `GOPROXY=https://proxy.golang.org go list -m github.com/HuynhNhatKhanh/vnsalary@vX.Y.Z`.
 5. Check the release page: six archives, `checksums.txt`, and the notes.
+6. Check that the `packages` job pushed `vnsalary <version>` to
+   [HuynhNhatKhanh/homebrew-tap](https://github.com/HuynhNhatKhanh/homebrew-tap)
+   (Homebrew formula and Scoop manifest, written by
+   `scripts/package-manifests.sh`). It needs the `TAP_GITHUB_TOKEN` secret, a
+   fine-grained token limited to that repository with Contents read and write;
+   without it the job only logs a notice.

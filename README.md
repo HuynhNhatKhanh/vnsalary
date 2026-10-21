@@ -278,7 +278,16 @@ go install github.com/HuynhNhatKhanh/vnsalary/cmd/vnsalary@latest
 ```
 *(Or compile directly: `go build -o vnsalary ./cmd/vnsalary`)*
 
-**Without Go:** download a prebuilt binary for Linux, macOS or Windows (amd64/arm64) from the [latest release](https://github.com/HuynhNhatKhanh/vnsalary/releases/latest), check it against `checksums.txt`, and run `vnsalary version`.
+**Homebrew** (macOS, Linux) and **Scoop** (Windows):
+```bash
+brew install HuynhNhatKhanh/tap/vnsalary
+```
+```powershell
+scoop bucket add huynhnhatkhanh https://github.com/HuynhNhatKhanh/homebrew-tap
+scoop install huynhnhatkhanh/vnsalary
+```
+
+**Without a package manager:** download a prebuilt binary for Linux, macOS or Windows (amd64/arm64) from the [latest release](https://github.com/HuynhNhatKhanh/vnsalary/releases/latest), check it against `checksums.txt`, and run `vnsalary version`.
 
 ### Commands
 

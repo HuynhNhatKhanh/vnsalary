@@ -280,7 +280,16 @@ go install github.com/HuynhNhatKhanh/vnsalary/cmd/vnsalary@latest
 ```
 *(Hoặc tự build file nhị phân: `go build -o vnsalary ./cmd/vnsalary`)*
 
-**Không cài Go:** tải file chạy sẵn cho Linux, macOS hoặc Windows (amd64/arm64) ở [bản phát hành mới nhất](https://github.com/HuynhNhatKhanh/vnsalary/releases/latest), đối chiếu với `checksums.txt`, rồi chạy `vnsalary version`.
+**Homebrew** (macOS, Linux) và **Scoop** (Windows):
+```bash
+brew install HuynhNhatKhanh/tap/vnsalary
+```
+```powershell
+scoop bucket add huynhnhatkhanh https://github.com/HuynhNhatKhanh/homebrew-tap
+scoop install huynhnhatkhanh/vnsalary
+```
+
+**Không dùng trình quản lý gói:** tải file chạy sẵn cho Linux, macOS hoặc Windows (amd64/arm64) ở [bản phát hành mới nhất](https://github.com/HuynhNhatKhanh/vnsalary/releases/latest), đối chiếu với `checksums.txt`, rồi chạy `vnsalary version`.
 
 ### Các Lệnh Tiêu Biểu
 
