@@ -22,11 +22,18 @@ func computeBreakpoints(policy *Policy, opts Options) []breakpoint {
 
 	grossPoints := []VND{minGross}
 
+	// Unemployment insurance rate per 100: none for foreign nationals.
+	rateU := int64(1)
+	if opts.Foreigner {
+		rateU = 0
+	}
+
 	// Statutory insurance caps when contributions are based on gross salary
 	if opts.InsuranceBase == nil {
-		grossPoints = append(grossPoints,
-			policy.MaxSocialHealthSalary+notInsured,
-			policy.MaxUnemploymentSalary(opts.Region)+notInsured)
+		grossPoints = append(grossPoints, policy.MaxSocialHealthSalary+notInsured)
+		if rateU > 0 {
+			grossPoints = append(grossPoints, policy.MaxUnemploymentSalary(opts.Region)+notInsured)
+		}
 	}
 
 	// grossFor estimates the gross at which assessable income
@@ -37,7 +44,7 @@ func computeBreakpoints(policy *Policy, opts Options) []breakpoint {
 			insSalary := *opts.InsuranceBase
 			baseSH := minVND(insSalary, policy.MaxSocialHealthSalary)
 			baseU := minVND(insSalary, policy.MaxUnemploymentSalary(opts.Region))
-			return pre + roundDiv(int64(baseSH)*95, 1000) + roundDiv(int64(baseU)*1, 100)
+			return pre + roundDiv(int64(baseSH)*95, 1000) + roundDiv(int64(baseU)*rateU, 100)
 		}
 		// Insurance depends on x = gross - notInsured: solve x - ins(x) = pre - notInsured.
 		y := pre - notInsured
@@ -47,14 +54,14 @@ func computeBreakpoints(policy *Policy, opts Options) []breakpoint {
 		capSH := policy.MaxSocialHealthSalary
 		capU := policy.MaxUnemploymentSalary(opts.Region)
 		var x VND
-		if x1 := roundDiv(int64(y)*1000, 895); x1 <= capSH && x1 <= capU {
+		if x1 := roundDiv(int64(y)*1000, 905-10*rateU); x1 <= capSH && (rateU == 0 || x1 <= capU) {
 			x = x1
 		} else {
 			insSH := roundDiv(int64(capSH)*95, 1000)
-			if x2 := roundDiv(int64(y+insSH)*100, 99); x2 <= capU {
+			if x2 := roundDiv(int64(y+insSH)*100, 100-rateU); rateU == 0 || x2 <= capU {
 				x = x2
 			} else {
-				x = y + insSH + roundDiv(int64(capU)*1, 100)
+				x = y + insSH + roundDiv(int64(capU)*rateU, 100)
 			}
 		}
 		return x + notInsured

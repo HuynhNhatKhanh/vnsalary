@@ -24,6 +24,7 @@ type goldenCase struct {
 	MealCash               int64  `json:"meal_cash"`
 	OtherExempt            int64  `json:"other_exempt"`
 	Bonus                  int64  `json:"bonus"`
+	Foreigner              bool   `json:"foreigner"`
 	ExpectedSocial         *int64 `json:"expected_social"`
 	ExpectedHealth         *int64 `json:"expected_health"`
 	ExpectedUnemployment   *int64 `json:"expected_unemployment"`
@@ -61,6 +62,7 @@ func TestGoldenData(t *testing.T) {
 				Dependents: tc.Dependents,
 				Region:     vnsalary.Region(tc.Region),
 				Date:       date,
+				Foreigner:  tc.Foreigner,
 				Extras: vnsalary.Extras{
 					Overtime:    vnsalary.VND(tc.Overtime),
 					MealCash:    vnsalary.VND(tc.MealCash),

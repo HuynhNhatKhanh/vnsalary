@@ -34,8 +34,9 @@ disagreed between sources. A parameter set with citations is useful in itself.
 | PIT | progressive by bracket: 7 brackets until 2025, 5 brackets from 2026 |
 | Employer cost | BHXH 17.5% (incl. 0.5% occupational accident), BHYT 3%, BHTN 1% |
 | Policy by date | `Options.Date` selects the parameter set |
-| CLI | `gross`, `net`, `diff`, `flat`, `annual` (JSON file of payments), `--json`, `--lang vi\|en` |
+| CLI | `gross`, `net`, `diff` (with `--foreigner`), `flat`, `annual` (JSON file of payments), `--json`, `--lang vi\|en` |
 | Extras (v0.3.0) | overtime, cash meal allowance, other exempt allowances and bonus inside gross; exempt income, insurance salary and the tax caused by the bonus |
+| Foreign employees (v0.5.0) | `Options.Foreigner`: no unemployment insurance for employee or employer; `--foreigner` |
 | 10% withholding (v0.5.0) | `FlatWithholding`: 10% of a payment to a resident without a labour contract or with one under 3 months, from the threshold of the payment date (2M, 5M from 2026-07-01); `vnsalary flat` |
 | Annual finalization (v0.4.0) | yearly tax on all payments of a tax year vs. the tax withheld; 12 months of personal deduction, dependent months, charity, medical and tuition deductions (§8) |
 
@@ -326,6 +327,8 @@ and a real test of how pleasant the API is.
 | 2026-10-20 | Yearly schedule = monthly limits × 12, same rounding as monthly | the law's yearly column; the same convention keeps a steady salary's balance within a few VND |
 | 2026-10-20 | First tax year 2025 | the policy data starts on 2024-07-01, so 2024 is not covered in full |
 | 2026-10-20 | 10% threshold 5M from 2026-07-01, 2M before ([#7](https://github.com/HuynhNhatKhanh/vnsalary/issues/7)) | withholding is done at payment time under the rules then in force; Decree 253/2026 took effect on 2026-07-01 (see §14 for the reading of Art. 69.1.a) |
+| 2026-10-21 | `Options.Foreigner` drops unemployment insurance only ([#9](https://github.com/HuynhNhatKhanh/vnsalary/issues/9)) | the Law on Employment defines the employee as a Vietnamese citizen (74/2025 Art. 2.1; 38/2013 Art. 3.1); social insurance exemptions depend on facts the library does not have (contract length, transfer status, age at signing), so they are documented, not modelled |
+| 2026-10-21 | Residence and nationality are separate options | a foreigner can be a tax resident and a Vietnamese citizen a non-resident; insurance follows nationality, tax follows residence |
 | 2026-10-20 | `FlatWithholding` computes tax only; below the threshold `Withheld` is 0 | withholding on request and the deferral commitment are the individual's choice; insurance depends on the contract, not on the tax rule |
 
 ## 12. Known gaps
@@ -352,8 +355,9 @@ how often users are likely to need it:
   job changes and late dependents make monthly withholding differ from the
   yearly tax.
 - **v0.5.0**: 10% withholding for contracts under 3 months
-  ([#7](https://github.com/HuynhNhatKhanh/vnsalary/issues/7)), non-residents,
-  foreign employees.
+  ([#7](https://github.com/HuynhNhatKhanh/vnsalary/issues/7)), foreign
+  employees ([#9](https://github.com/HuynhNhatKhanh/vnsalary/issues/9)),
+  non-residents.
 
 Law changes are released as soon as the document is issued, outside this
 order (for example the 2027 regional minimum wage,
@@ -410,3 +414,5 @@ Checked against the full texts or official publications on 2026-10-13; the rows 
 | Yearly schedule: monthly limits × 12 | Law 109/2025/QH15 Art. 9.2 |
 | 10% withholding for contracts under 3 months from 5,000,000 per payment; below it on request | Decree 253/2026/NĐ-CP Art. 50.2 |
 | 10% withholding from 2,000,000 per payment before 2026-07-01 | Circular 111/2013/TT-BTC Art. 25.1.i |
+| Unemployment insurance covers Vietnamese citizens only | Law on Employment 74/2025/QH15 Art. 2.1, Art. 31 (full text, xaydungchinhsach.chinhphu.vn); Law 38/2013/QH13 Art. 3.1, Art. 43 before 2026 |
+| Foreign employees on contracts of 12 months or more pay social insurance, except intra-company transfers, retirement age at signing, treaties | Law 41/2024/QH15 Art. 2.2 (Công báo No. 987+988, 2024-08-25); Decree 143/2018/NĐ-CP before 2025-07-01 |

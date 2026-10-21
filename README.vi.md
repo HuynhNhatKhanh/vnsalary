@@ -168,6 +168,19 @@ fmt.Println(res.Withheld, res.Net) // 800000 7200000
 
 Số đã khấu trừ là tạm nộp: `res.Payment(date)` đưa vào `Annual`, thuế được hoàn nếu thu nhập cả năm thấp hơn mức giảm trừ. Chưa mô hình hóa: bản cam kết để tạm chưa khấu trừ, và bảo hiểm bắt buộc (tùy theo hợp đồng).
 
+### 7. Người Lao Động Nước Ngoài
+
+Người nước ngoài không đóng bảo hiểm thất nghiệp (chỉ áp dụng với công dân Việt Nam); BHXH và BHYT vẫn đóng:
+
+```go
+res, _ := vnsalary.GrossToNet(60_000_000, vnsalary.Options{
+	Region: vnsalary.Region1, Date: time.Date(2026, 8, 10, 0, 0, 0, 0, time.UTC), Foreigner: true,
+})
+// res.Insurance.Unemployment == 0, res.Employer.Unemployment == 0
+```
+
+Người nước ngoài có HĐLĐ từ đủ 12 tháng đóng BHXH bắt buộc (Luật 41/2024 Điều 2.2); các trường hợp loại trừ (di chuyển nội bộ, đủ tuổi nghỉ hưu khi ký hợp đồng, điều ước quốc tế) chưa được mô hình hóa. `Foreigner` chỉ đổi phần bảo hiểm: thuế vẫn theo tình trạng cư trú (có mặt từ 183 ngày, hoặc có nơi ở thường xuyên).
+
 ---
 
 ## 📊 Bảng Căn Cứ Pháp Lý (2024 vs 2026)
@@ -218,7 +231,7 @@ Văn bản luật quy định tỉ lệ và mức trần nhưng không quy đị
 vnsalary áp dụng cho **người lao động cư trú, hợp đồng lao động từ 3 tháng trở lên**. Hãy đọc các điểm sau trước khi dùng cho bảng lương thật:
 
 - **Các khoản miễn thuế được nhận như người dùng truyền vào.** `Extras.Overtime` phải là tiền làm thêm trong giới hạn giờ luật cho phép (phần vượt giới hạn chỉ để trong gross), và mức của `Extras.OtherExempt` (điện thoại, trang phục…) theo quy chế công ty; thư viện không kiểm các mức này.
-- **Chưa hỗ trợ:** người không cư trú (20%), người nước ngoài (không đóng BHTN).
+- **Chưa hỗ trợ:** người không cư trú (20%); với người nước ngoài, các trường hợp được loại trừ khỏi BHXH (di chuyển nội bộ, đủ tuổi nghỉ hưu, điều ước quốc tế).
 - **Lương đóng bảo hiểm thấp hơn lương tối thiểu vùng vẫn được tính, kèm cảnh báo.** Người làm toàn thời gian phải được trả ít nhất mức này, nên `Result.Warnings` báo mã `insurance_salary_below_regional_minimum` (CLI in dòng `[!]`). Đây không phải lỗi vì hợp đồng bán thời gian có thể thấp hơn hợp pháp.
 - **Tỉ lệ TNLĐ-BNN của công ty cố định 0,5%**, nên BHXH phần công ty luôn là 17,5%. Một số doanh nghiệp đóng 0,3%.
 - **Kinh phí công đoàn 2% không nằm trong `Employer.TotalCost`.** Đây không phải bảo hiểm, nhưng công ty vẫn phải đóng.
@@ -264,6 +277,11 @@ Số tiền là tổng chi trả trong tháng; các cờ cho biết phần nào 
 ```bash
 vnsalary gross 50000000 --bonus 20000000 --date 2026-08-10        # hiện phần thuế do khoản thưởng
 vnsalary gross 55000000 --overtime 5000000 --meal 1500000 --other-exempt 800000 --date 2026-08-10
+```
+
+#### Người lao động nước ngoài
+```bash
+vnsalary gross 60000000 --foreigner --date 2026-08-10                # không đóng BHTN
 ```
 
 #### Khấu trừ 10%

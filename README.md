@@ -168,6 +168,19 @@ fmt.Println(res.Withheld, res.Net) // 800000 7200000
 
 The withholding is a prepayment: `res.Payment(date)` goes into `Annual`, which refunds it when the year's income is below the deductions. Not modelled: the commitment that lets an individual defer withholding, and compulsory insurance, which depends on the contract.
 
+### 7. Foreign Employees
+
+Foreign nationals pay no unemployment insurance (it covers Vietnamese citizens only); social and health insurance stay:
+
+```go
+res, _ := vnsalary.GrossToNet(60_000_000, vnsalary.Options{
+	Region: vnsalary.Region1, Date: time.Date(2026, 8, 10, 0, 0, 0, 0, time.UTC), Foreigner: true,
+})
+// res.Insurance.Unemployment == 0, res.Employer.Unemployment == 0
+```
+
+A foreign employee pays social insurance on a contract of 12 months or more (Law 41/2024 Art. 2.2); the exemptions (intra-company transfer, retirement age at signing, treaties) are not modelled. `Foreigner` changes insurance only: tax still follows residence (183 days in Vietnam, or a regular place to stay).
+
 ---
 
 ## 📊 Legal Reference & Policy Comparison
@@ -216,7 +229,7 @@ The legal texts set rates and caps but no rounding step, and calculators differ 
 vnsalary covers **resident employees on labour contracts of 3 months or more**. Check these before relying on it for a real payroll:
 
 - **Exempt allowances are taken as given.** `Extras.Overtime` must be pay for hours within the legal limits (pay for extra hours belongs in gross only), and the limits of `Extras.OtherExempt` (phone, uniform, …) follow your employer's regulation; the library does not check them.
-- **Not covered:** non-residents (20%), foreign employees (no unemployment insurance).
+- **Not covered:** non-residents (20%); for foreign employees, the social insurance exemptions (intra-company transfer, retirement age, treaties).
 - **An insurance salary below the regional minimum wage is computed as given, with a warning.** A full-time employee must be paid at least that minimum, so `Result.Warnings` reports code `insurance_salary_below_regional_minimum` (the CLI prints it with `[!]`). It is not an error because part-time contracts can legally be lower.
 - **Employer accident insurance is fixed at 0.5%**, so employer social insurance is always 17.5%. Some employers pay 0.3%.
 - **The 2% trade union fee is not in `Employer.TotalCost`.** It is not insurance, but the employer pays it.
@@ -262,6 +275,11 @@ The amount is the total paid in the month; flags say which parts are extras:
 ```bash
 vnsalary gross 50000000 --bonus 20000000 --date 2026-08-10        # shows the tax caused by the bonus
 vnsalary gross 55000000 --overtime 5000000 --meal 1500000 --other-exempt 800000 --date 2026-08-10
+```
+
+#### Foreign employees
+```bash
+vnsalary gross 60000000 --foreigner --date 2026-08-10                # no unemployment insurance
 ```
 
 #### 10% withholding

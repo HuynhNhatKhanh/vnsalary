@@ -24,6 +24,11 @@ Entries that change computed amounts are marked **(results change)**.
   `FlatResult.Payment` feeds the withholding into `Annual`.
 - `Policy.FlatWithholdingThreshold`.
 - `vnsalary flat <amount> [--date]`.
+- `Options.Foreigner`: foreign nationals pay no unemployment insurance,
+  employee or employer (Law on Employment 74/2025/QH15 Art. 2.1); social and
+  health insurance unchanged
+  ([#9](https://github.com/HuynhNhatKhanh/vnsalary/issues/9)). CLI
+  `--foreigner`; `"foreigner"` in the `annual` input file.
 
 ### Fixed
 

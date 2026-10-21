@@ -63,6 +63,8 @@ func TestRun_ExitCodesAndMessages(t *testing.T) {
 
 		{"flat ok", []string{"flat", "8000000", "--date", "2026-08-01"}, 0, "THỰC NHẬN: 7.200.000 đ", ""},
 		{"flat below threshold", []string{"flat", "4000000", "--date", "2026-08-01", "--lang", "en"}, 0, "Below the threshold", ""},
+		{"foreigner net", []string{"net", "50754400", "--foreigner", "--date", "2026-08-10"}, 0, "LƯƠNG GROSS: 60.000.000 đ", ""},
+		{"flat rejects foreigner", []string{"flat", "8000000", "--foreigner"}, 2, "", "lệnh flat không dùng cờ -foreigner"},
 		{"flat rejects unused flag", []string{"flat", "8000000", "--bonus", "1000000"}, 2, "", "lệnh flat không dùng cờ -bonus"},
 		{"flat rejects unused flag en", []string{"flat", "8000000", "-d", "1", "--lang", "en"}, 2, "", "the flat command does not use -d"},
 		{"extra argument hides a flag", []string{"gross", "35000000", "x", "--bonus", "5000000"}, 2, "", "tham số thừa: x --bonus 5000000"},
@@ -199,6 +201,7 @@ func TestRun_Golden(t *testing.T) {
 		{"diff_en.golden", []string{"diff", "60000000", "--from", "2026-06-30", "--to", "2026-07-01", "--lang", "en"}},
 		{"extras_vi.golden", []string{"gross", "55000000", "-d", "1", "--overtime", "5000000", "--meal", "1500000", "--other-exempt", "800000", "--bonus", "10000000", "--date", "2026-08-10"}},
 		{"extras_en.golden", []string{"gross", "50000000", "--bonus", "20000000", "--date", "2026-08-10", "--lang", "en"}},
+		{"foreigner_vi.golden", []string{"gross", "60000000", "--foreigner", "--date", "2026-08-10"}},
 		{"flat_vi.golden", []string{"flat", "12345675", "--date", "2026-08-15"}},
 		{"flat_en.golden", []string{"flat", "3000000", "--date", "2026-06-30", "--lang", "en"}},
 		{"annual_vi.golden", []string{"annual", "testdata/annual_job_change.json"}},
