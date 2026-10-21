@@ -30,6 +30,7 @@ var defaultPolicies = []Policy{
 				"Nghị định 253/2026/NĐ-CP Điều 8 khoản 2 điểm g, Điều 69 khoản 1 điểm b (Tiền ăn giữa ca bằng tiền chỉ tính thuế phần vượt 1.200.000đ/tháng, từ 01/07/2026)",
 				"Nghị định 253/2026/NĐ-CP Điều 50 khoản 2 (Khấu trừ 10% khoản chi trả từ 5.000.000đ/lần cho cá nhân không ký HĐLĐ hoặc HĐLĐ dưới 3 tháng, từ 01/07/2026)",
 				"Luật Việc làm số 74/2025/QH15 Điều 2 khoản 1, Điều 31 (BHTN áp dụng với người lao động là công dân Việt Nam; người nước ngoài không đóng)",
+				"Nghị định 253/2026/NĐ-CP Điều 4, Điều 5, Điều 64 khoản 1-2, Điều 69 khoản 1 điểm a (Cá nhân không cư trú: thuế 20% trên tiền lương, tiền công cho công việc tại Việt Nam, không giảm trừ; cư trú = có mặt từ 183 ngày hoặc có nơi ở thường xuyên)",
 				"Luật BHXH số 41/2024/QH15 Điều 2 khoản 2 (Người lao động nước ngoài HĐLĐ từ đủ 12 tháng đóng BHXH bắt buộc, trừ di chuyển nội bộ, đủ tuổi nghỉ hưu, điều ước quốc tế)",
 				"Nghị định 253/2026/NĐ-CP Điều 48 khoản 1 điểm b, khoản 2 điểm a (Quyết toán năm: giảm trừ bản thân đủ 12 tháng; người phụ thuộc từ tháng phát sinh nghĩa vụ nuôi dưỡng)",
 				"Nghị định 253/2026/NĐ-CP Điều 49 khoản 2, Điều 69 khoản 1 điểm a (Trừ chi y tế tối đa 23 triệu/năm, giáo dục - đào tạo tối đa 24 triệu/năm, từ kỳ tính thuế 2026)",
@@ -52,6 +53,9 @@ var defaultPolicies = []Policy{
 			{Limit: 60_000_000, RateNumerator: 20, RateDenom: 100},
 			{Limit: 100_000_000, RateNumerator: 30, RateDenom: 100},
 			{Limit: math.MaxInt64, RateNumerator: 35, RateDenom: 100},
+		},
+		NonResidentBrackets: []TaxBracket{
+			{Limit: math.MaxInt64, RateNumerator: 20, RateDenom: 100},
 		},
 		MealCashCap:              1_200_000,
 		MealCashCapVerified:      true,
@@ -82,6 +86,7 @@ var defaultPolicies = []Policy{
 				"Tiền ăn giữa ca 730.000đ/tháng theo mức tham chiếu Thông tư 26/2016/TT-BLĐTBXH — ⚠️ chưa xác nhận cho 01–06/2026 (thông tư đã bị bãi bỏ)",
 				"Thông tư 111/2013/TT-BTC Điều 25 khoản 1 điểm i (Khấu trừ 10% khoản chi trả từ 2.000.000đ/lần cho cá nhân không ký HĐLĐ hoặc HĐLĐ dưới 3 tháng)",
 				"Luật Việc làm số 74/2025/QH15 Điều 2 khoản 1, Điều 31 (BHTN áp dụng với người lao động là công dân Việt Nam; người nước ngoài không đóng)",
+				"Nghị định 253/2026/NĐ-CP Điều 4, Điều 5, Điều 64 khoản 1-2, Điều 69 khoản 1 điểm a (Cá nhân không cư trú: thuế 20% trên tiền lương, tiền công cho công việc tại Việt Nam, không giảm trừ; cư trú = có mặt từ 183 ngày hoặc có nơi ở thường xuyên)",
 				"Luật BHXH số 41/2024/QH15 Điều 2 khoản 2 (Người lao động nước ngoài HĐLĐ từ đủ 12 tháng đóng BHXH bắt buộc, trừ di chuyển nội bộ, đủ tuổi nghỉ hưu, điều ước quốc tế)",
 				"Nghị định 253/2026/NĐ-CP Điều 48 khoản 1 điểm b, khoản 2 điểm a (Quyết toán năm: giảm trừ bản thân đủ 12 tháng; người phụ thuộc từ tháng phát sinh nghĩa vụ nuôi dưỡng)",
 				"Nghị định 253/2026/NĐ-CP Điều 49 khoản 2, Điều 69 khoản 1 điểm a (Trừ chi y tế tối đa 23 triệu/năm, giáo dục - đào tạo tối đa 24 triệu/năm, từ kỳ tính thuế 2026)",
@@ -104,6 +109,9 @@ var defaultPolicies = []Policy{
 			{Limit: 60_000_000, RateNumerator: 20, RateDenom: 100},
 			{Limit: 100_000_000, RateNumerator: 30, RateDenom: 100},
 			{Limit: math.MaxInt64, RateNumerator: 35, RateDenom: 100},
+		},
+		NonResidentBrackets: []TaxBracket{
+			{Limit: math.MaxInt64, RateNumerator: 20, RateDenom: 100},
 		},
 		MealCashCap:              730_000,
 		OvertimeFullyExempt:      true,
@@ -133,6 +141,7 @@ var defaultPolicies = []Policy{
 				"Thông tư 111/2013/TT-BTC Điều 9 khoản 1 điểm c.1, sửa đổi bởi Thông tư 92/2015/TT-BTC Điều 25 khoản 6 (Quyết toán năm: giảm trừ bản thân đủ 12 tháng)",
 				"Thông tư 111/2013/TT-BTC Điều 25 khoản 1 điểm i (Khấu trừ 10% khoản chi trả từ 2.000.000đ/lần cho cá nhân không ký HĐLĐ hoặc HĐLĐ dưới 3 tháng)",
 				"Luật Việc làm 2013 Điều 3 khoản 1, Điều 43 (BHTN áp dụng với người lao động là công dân Việt Nam; người nước ngoài không đóng)",
+				"Luật Thuế TNCN 2007 Điều 26 khoản 1; Thông tư 111/2013/TT-BTC Điều 18 (Cá nhân không cư trú: thuế 20% trên thu nhập chịu thuế từ tiền lương, tiền công)",
 				"Nghị định 143/2018/NĐ-CP (BHXH bắt buộc với người lao động nước ngoài, tới 30/06/2025); Luật BHXH số 41/2024/QH15 Điều 2 khoản 2 (từ 01/07/2025)",
 				"Tiền ăn giữa ca 730.000đ/tháng theo mức tham chiếu Thông tư 26/2016/TT-BLĐTBXH — ⚠️ chưa xác nhận ngày bãi bỏ",
 			},
@@ -157,6 +166,9 @@ var defaultPolicies = []Policy{
 			{Limit: 80_000_000, RateNumerator: 30, RateDenom: 100},
 			{Limit: math.MaxInt64, RateNumerator: 35, RateDenom: 100},
 		},
+		NonResidentBrackets: []TaxBracket{
+			{Limit: math.MaxInt64, RateNumerator: 20, RateDenom: 100},
+		},
 		MealCashCap:              730_000,
 		FlatWithholdingThreshold: 2_000_000,
 	},
@@ -172,6 +184,7 @@ func PolicyAt(date time.Time) (Policy, error) {
 	}
 	pCopy := *p
 	pCopy.Brackets = append([]TaxBracket(nil), p.Brackets...)
+	pCopy.NonResidentBrackets = append([]TaxBracket(nil), p.NonResidentBrackets...)
 	pCopy.Ref = p.Ref.clone()
 	return pCopy, nil
 }

@@ -37,6 +37,14 @@ type Options struct {
 	// transfer, retirement age at signing, treaties) are not modelled; set
 	// InsuranceBase to 0 in those cases only if health insurance is also not due.
 	Foreigner bool
+
+	// NonResident marks a non-resident for PIT: 20% of taxable income from
+	// work in Vietnam, without family or insurance deductions (Decree
+	// 253/2026/NĐ-CP Art. 64; Law on PIT 2007 Art. 26 before 2026). A resident
+	// is present in Vietnam 183 days or more in the calendar year or in 12
+	// consecutive months, or has a regular place to stay there (Decree
+	// 253/2026/NĐ-CP Art. 4); the caller decides. Insurance is unchanged.
+	NonResident bool
 }
 
 // Extras are amounts already included in gross (gross is the total paid in the
@@ -158,6 +166,10 @@ const (
 	WarnInsuranceSalaryIncludesAllowances = "insurance_salary_includes_allowances"
 )
 
+// WarnDependentsIgnoredNonResident is reported when Dependents is set for a
+// non-resident, who has no family deductions; the dependents are ignored.
+const WarnDependentsIgnoredNonResident = "dependents_ignored_non_resident"
+
 func minVND(a, b VND) VND {
 	if a < b {
 		return a
@@ -202,8 +214,7 @@ func finalize(policy *Policy, res Result, opts Options) Result {
 	}
 	if ex.Bonus > 0 {
 		// The bonus is outside the insurance salary, so only taxable income changes.
-		without := res.TaxableIncome - ex.Bonus - res.Insurance.Total - res.Deductions.Total
-		taxWithout, _ := progressiveTax(policy, max(without, 0))
+		_, taxWithout, _ := incomeTax(policy, opts, res.TaxableIncome-ex.Bonus, res.Insurance.Total)
 		res.BonusTax = res.Tax - taxWithout
 	}
 
@@ -219,6 +230,12 @@ func finalize(policy *Policy, res Result, opts Options) Result {
 		res.Warnings = append(res.Warnings, Warning{
 			Code:    WarnOvertimeTaxedBeforeExemption,
 			Message: "before tax period 2026 only overtime pay above normal-hours pay is exempt; all of Extras.Overtime is taxed, put the exempt part in Extras.OtherExempt",
+		})
+	}
+	if opts.NonResident && opts.Dependents > 0 {
+		res.Warnings = append(res.Warnings, Warning{
+			Code:    WarnDependentsIgnoredNonResident,
+			Message: "non-residents have no family deductions; Dependents is ignored",
 		})
 	}
 	if ex.MealCash > 0 && !policy.MealCashCapVerified {
@@ -282,6 +299,23 @@ func insuranceSalary(gross VND, opts Options) VND {
 // assessable income, rounding each bracket half-up to 1 VND.
 func progressiveTax(policy *Policy, assessable VND) (VND, []BracketLine) {
 	return scheduleTax(policy.Brackets, 1, assessable)
+}
+
+// incomeTax returns the family deductions and the monthly PIT on taxable
+// income. Residents deduct insurance and family deductions and pay the
+// progressive rates; non-residents pay the flat rate on taxable income.
+func incomeTax(policy *Policy, opts Options, taxable, insurance VND) (Deductions, VND, []BracketLine) {
+	if opts.NonResident {
+		tax, lines := scheduleTax(policy.NonResidentBrackets, 1, max(taxable, 0))
+		return Deductions{}, tax, lines
+	}
+	d := Deductions{
+		Personal:   policy.PersonalDeduction,
+		Dependents: policy.DependentDeduction * VND(opts.Dependents),
+	}
+	d.Total = d.Personal + d.Dependents
+	tax, lines := progressiveTax(policy, max(taxable-insurance-d.Total, 0))
+	return d, tax, lines
 }
 
 // scheduleTax applies a progressive schedule whose bracket limits are
@@ -352,20 +386,15 @@ func computeNet(policy *Policy, gross VND, opts Options) (Result, error) {
 	emprUnemployment := roundDiv(int64(baseU)*1, 100) // Employer unemployment insurance (BHTN): 1%
 	totalEmprInsurance := emprSocial + emprHealth + emprUnemployment
 
-	// 4. Family tax relief deductions (Giảm trừ gia cảnh)
-	personalDeduction := policy.PersonalDeduction
-	dependentDeduction := policy.DependentDeduction * VND(opts.Dependents)
-	totalDeductions := personalDeduction + dependentDeduction
-
-	// 5. Taxable and assessable income (Thu nhập chịu thuế & Thu nhập tính thuế)
+	// 4. Taxable income (Thu nhập chịu thuế)
 	taxableIncome := gross - exemptIncome(policy, opts.Extras).Total
-	assessableIncome := taxableIncome - totalEmpInsurance - totalDeductions
-	if assessableIncome < 0 {
-		assessableIncome = 0
-	}
 
-	// 6. Progressive personal income tax calculation (Thuế TNCN lũy tiến từng phần)
-	totalTax, brackets := progressiveTax(policy, assessableIncome)
+	// 5-6. Deductions, assessable income and personal income tax
+	deductions, totalTax, brackets := incomeTax(policy, opts, taxableIncome, totalEmpInsurance)
+	assessableIncome := max(taxableIncome-totalEmpInsurance-deductions.Total, 0)
+	if opts.NonResident {
+		assessableIncome = taxableIncome // no deductions of any kind
+	}
 
 	// 7. Net take-home pay (Lương Net thực nhận)
 	net := gross - totalEmpInsurance - totalTax
@@ -376,7 +405,7 @@ func computeNet(policy *Policy, gross VND, opts Options) (Result, error) {
 		Insurance:        Insurance{Social: empSocial, Health: empHealth, Unemployment: empUnemployment, Total: totalEmpInsurance},
 		TaxableIncome:    taxableIncome,
 		AssessableIncome: assessableIncome,
-		Deductions:       Deductions{Personal: personalDeduction, Dependents: dependentDeduction, Total: totalDeductions},
+		Deductions:       deductions,
 		Tax:              totalTax,
 		Brackets:         brackets,
 		Employer: EmployerCost{

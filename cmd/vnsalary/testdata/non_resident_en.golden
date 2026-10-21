@@ -1,0 +1,21 @@
+=================================================================
+ GROSS SALARY: 60,000,000 VND
+-----------------------------------------------------------------
+ [Mandatory Employee Insurance: 4,807,000 VND]
+  • Social Insurance (BHXH 8%):       4,048,000 VND
+  • Health Insurance (BHYT 1.5%):     759,000 VND
+  • Unemployment (BHTN 1%):           0 VND
+-----------------------------------------------------------------
+ [Tax Deductions: 0 VND]
+  • Personal:                          0 VND
+  • Dependents:                        0 VND
+  • Assessable Income:                 60,000,000 VND
+-----------------------------------------------------------------
+ [Personal Income Tax (PIT): 12,000,000 VND]
+  • Bracket 1 (20% on 60,000,000 VND): 12,000,000 VND
+=================================================================
+ NET TAKE-HOME PAY: 43,193,000 VND
+=================================================================
+ Employer Cost: 70,373,000 VND (Gross + Employer Insurance 10,373,000 VND)
+ Applied Policy: Policy from 2026-07-01: Base salary 2.53M VND (social/health cap 50.6M VND), 5 progressive brackets, deductions 15.5M/6.2M
+ [!] Non-residents have no family deductions; -d is ignored

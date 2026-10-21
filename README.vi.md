@@ -181,6 +181,20 @@ res, _ := vnsalary.GrossToNet(60_000_000, vnsalary.Options{
 
 Người nước ngoài có HĐLĐ từ đủ 12 tháng đóng BHXH bắt buộc (Luật 41/2024 Điều 2.2); các trường hợp loại trừ (di chuyển nội bộ, đủ tuổi nghỉ hưu khi ký hợp đồng, điều ước quốc tế) chưa được mô hình hóa. `Foreigner` chỉ đổi phần bảo hiểm: thuế vẫn theo tình trạng cư trú (có mặt từ 183 ngày, hoặc có nơi ở thường xuyên).
 
+### 8. Cá Nhân Không Cư Trú
+
+Cá nhân không cư trú nộp 20% trên thu nhập chịu thuế từ công việc tại Việt Nam, không được giảm trừ gia cảnh hay bảo hiểm (NĐ 253/2026 Điều 64; trước đó Luật Thuế TNCN 2007 Điều 26). Người dùng tự xác định cư trú: có mặt tại Việt Nam từ 183 ngày trong năm dương lịch hoặc 12 tháng liên tục, hoặc có nơi ở thường xuyên (NĐ 253/2026 Điều 4).
+
+```go
+res, _ := vnsalary.GrossToNet(60_000_000, vnsalary.Options{
+	Region: vnsalary.Region1, Date: time.Date(2026, 8, 10, 0, 0, 0, 0, time.UTC),
+	Foreigner: true, NonResident: true,
+})
+fmt.Println(res.Tax, res.Net) // 12000000 43193000
+```
+
+`NonResident` chỉ đổi phần thuế; người nước ngoài thì dùng kèm `Foreigner`. `NetToGross` vẫn trả về gross nhỏ nhất: khi có các khoản Extras, net của người không cư trú có thể giảm 1đ dù gross tăng (thuế phẳng không giảm khi bảo hiểm tăng), nên thư viện tìm trong cửa sổ 32đ phía dưới kết quả đầu tiên.
+
 ---
 
 ## 📊 Bảng Căn Cứ Pháp Lý (2024 vs 2026)
@@ -231,7 +245,7 @@ Văn bản luật quy định tỉ lệ và mức trần nhưng không quy đị
 vnsalary áp dụng cho **người lao động cư trú, hợp đồng lao động từ 3 tháng trở lên**. Hãy đọc các điểm sau trước khi dùng cho bảng lương thật:
 
 - **Các khoản miễn thuế được nhận như người dùng truyền vào.** `Extras.Overtime` phải là tiền làm thêm trong giới hạn giờ luật cho phép (phần vượt giới hạn chỉ để trong gross), và mức của `Extras.OtherExempt` (điện thoại, trang phục…) theo quy chế công ty; thư viện không kiểm các mức này.
-- **Chưa hỗ trợ:** người không cư trú (20%); với người nước ngoài, các trường hợp được loại trừ khỏi BHXH (di chuyển nội bộ, đủ tuổi nghỉ hưu, điều ước quốc tế).
+- **Chưa hỗ trợ:** với người nước ngoài, các trường hợp được loại trừ khỏi BHXH (di chuyển nội bộ, đủ tuổi nghỉ hưu, điều ước quốc tế); với người không cư trú làm việc cả trong và ngoài Việt Nam, việc chia thu nhập theo số ngày ở Việt Nam (NĐ 253/2026 Điều 64.3): hãy truyền phần thu nhập tại Việt Nam.
 - **Lương đóng bảo hiểm thấp hơn lương tối thiểu vùng vẫn được tính, kèm cảnh báo.** Người làm toàn thời gian phải được trả ít nhất mức này, nên `Result.Warnings` báo mã `insurance_salary_below_regional_minimum` (CLI in dòng `[!]`). Đây không phải lỗi vì hợp đồng bán thời gian có thể thấp hơn hợp pháp.
 - **Tỉ lệ TNLĐ-BNN của công ty cố định 0,5%**, nên BHXH phần công ty luôn là 17,5%. Một số doanh nghiệp đóng 0,3%.
 - **Kinh phí công đoàn 2% không nằm trong `Employer.TotalCost`.** Đây không phải bảo hiểm, nhưng công ty vẫn phải đóng.
@@ -282,6 +296,7 @@ vnsalary gross 55000000 --overtime 5000000 --meal 1500000 --other-exempt 800000 
 #### Người lao động nước ngoài
 ```bash
 vnsalary gross 60000000 --foreigner --date 2026-08-10                # không đóng BHTN
+vnsalary gross 60000000 --foreigner --non-resident --date 2026-08-10 # thuế phẳng 20%, không giảm trừ
 ```
 
 #### Khấu trừ 10%
