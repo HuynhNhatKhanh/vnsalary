@@ -49,8 +49,10 @@ reviews:
       instructions: |
         - Legal claims cite a document and article.
         - README.md and README.vi.md must say the same thing.
-        - CHANGELOG entries that change computed amounts are marked
-          "(results change)".
+        - A CHANGELOG entry is marked "(results change)" only when the same
+          inputs now give different amounts (a law change or a fix). New
+          options or functions whose zero value keeps earlier results are
+          not marked.
   tools:
     golangci-lint:
       enabled: true
