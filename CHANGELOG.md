@@ -38,6 +38,8 @@ Entries that change computed amounts are marked **(results change)**.
 
 ### Fixed
 
+- CLI: `diff` prints warnings (once per code across both periods); it
+  printed none before.
 - CLI: an extra argument is now an error. Flags after it, as in
   `gross 35000000 x --bonus 5000000`, were ignored without notice.
 

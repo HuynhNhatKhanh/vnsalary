@@ -341,6 +341,21 @@ var warningText = map[string]map[string]string{
 	},
 }
 
+// uniqueWarnings merges warning lists, keeping the first warning of each code.
+func uniqueWarnings(lists ...[]vnsalary.Warning) []vnsalary.Warning {
+	var out []vnsalary.Warning
+	seen := map[string]bool{}
+	for _, list := range lists {
+		for _, w := range list {
+			if !seen[w.Code] {
+				seen[w.Code] = true
+				out = append(out, w)
+			}
+		}
+	}
+	return out
+}
+
 func printWarnings(w io.Writer, warnings []vnsalary.Warning, lang string) {
 	for _, warn := range warnings {
 		text := warningText[warn.Code][lang]
@@ -615,6 +630,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 			return 0
 		}
 		printDiffTable(stdout, amount, dFrom, dTo, resFrom, resTo, *dependents, *region, lang)
+		printWarnings(stdout, uniqueWarnings(resFrom.Warnings, resTo.Warnings), lang)
 		return 0
 	}
 

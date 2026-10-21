@@ -277,7 +277,7 @@ not decide filing obligations.
 | Layer | What it proves |
 |---|---|
 | table tests | brackets, caps, regions, dependents, ±1 VND around every bracket limit, dates before/on/after each policy change |
-| golden data (`testdata/golden.json`) | 36 cases with `source`, `verified_at`, `notes`; 12 matched against TopCV; 11 odd amounts pin each insurance item and the tax rounding; 9 cover overtime, allowances and bonuses |
+| golden data (`testdata/golden.json`) | 40 cases with `source`, `verified_at`, `notes`; 12 matched against TopCV; 14 odd amounts exercise the rounding and 14 cases pin each insurance item; 10 cover overtime, allowances and bonuses; 4 cover foreign employees and non-residents |
 | annual golden data (`testdata/annual_golden.json`) | 4 finalization cases (job change, December bonus, steady 2025 salary, 2026 deductions) computed by hand and by an independent script; `ExampleAnnual` reproduces the job-change case through `GrossToNet` |
 | independent reference | expected values for odd amounts come from a separate implementation with exact fractions, not from vnsalary |
 | properties | `Net(NetToGross(n)) == n`; `NetToGross(Net(g)).Gross ≤ g` and minimal; net steps of 0 or 1; a steady salary's yearly tax equals its withholding up to rounding |

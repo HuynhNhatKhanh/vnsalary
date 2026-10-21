@@ -260,8 +260,14 @@ func TestRun_Warnings(t *testing.T) {
 		}
 	}
 
+	// diff prints the warnings of both periods once.
+	_, stdout, _ := runCLI("diff", "60000000", "--non-resident", "-d", "1")
+	if n := strings.Count(stdout, "[!] Cá nhân không cư trú không được giảm trừ gia cảnh"); n != 1 {
+		t.Errorf("diff: want the dependents warning once, got %d:\n%s", n, stdout)
+	}
+
 	// JSON carries the code, independent of --lang.
-	_, stdout, _ := runCLI("gross", "3000000", "--date", "2026-03-15", "--json", "--lang", "en")
+	_, stdout, _ = runCLI("gross", "3000000", "--date", "2026-03-15", "--json", "--lang", "en")
 	if !strings.Contains(stdout, `"code": "insurance_salary_below_regional_minimum"`) {
 		t.Errorf("JSON missing warning code:\n%s", stdout)
 	}

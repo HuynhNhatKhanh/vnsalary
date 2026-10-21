@@ -240,7 +240,7 @@ The legal texts set rates and caps but no rounding step, and calculators differ 
 
 ## ⚠️ Limitations
 
-vnsalary covers **resident employees on labour contracts of 3 months or more**. Check these before relying on it for a real payroll:
+vnsalary covers **employees on labour contracts, resident or not, Vietnamese or foreign**; payments without a contract or under one shorter than 3 months go through `FlatWithholding`. Check these before relying on it for a real payroll:
 
 - **Exempt allowances are taken as given.** `Extras.Overtime` must be pay for hours within the legal limits (pay for extra hours belongs in gross only), and the limits of `Extras.OtherExempt` (phone, uniform, …) follow your employer's regulation; the library does not check them.
 - **Not covered:** for foreign employees, the social insurance exemptions (intra-company transfer, retirement age, treaties); for non-residents working in and outside Vietnam, splitting income by days in Vietnam (Decree 253/2026 Art. 64.3): pass the Vietnam part.
@@ -350,7 +350,7 @@ BenchmarkNetToGross-16       111998         12749   ns/op       12920 B/op      
 ## 🧪 Testing
 
 The library is verified with a comprehensive test suite:
-- **Golden Test Dataset (`testdata/golden.json`):** 36 cases, each with a `source` and `verified_at` field stating how it was checked (hand calculation, an independent reference implementation, or an external calculator). 12 cases were matched to the VND against the TopCV calculator (2026-10-13 and 2026-10-15); cases not yet cross-checked with an external tool say so explicitly. 11 cases use odd amounts such as 23,456,789 so that every rounding step is exercised, and pin each insurance item.
+- **Golden Test Dataset (`testdata/golden.json`):** 40 cases, each with a `source` and `verified_at` field stating how it was checked (hand calculation, an independent reference implementation, or an external calculator). 12 cases were matched to the VND against the TopCV calculator (2026-10-13 and 2026-10-15); cases not yet cross-checked with an external tool say so explicitly. 14 cases use odd amounts such as 23,456,789 so that every rounding step is exercised; 14 pin each insurance item. 4 cases cover foreign employees and non-residents.
 - **Round-Trip Invariance Testing:** for every gross `g`, `NetToGross(Net(g))` returns the **smallest** gross with the same net, so `Net(NetToGross(Net(g))) == Net(g)` and `NetToGross(Net(g)).Gross <= g` (several grosses can share one net because of rounding).
 - **Policy invariants:** `TestPoliciesInvariants` fails if a new policy breaks an assumption of the inverse algorithm (ordering, social/health cap below unemployment cap, top bracket 35%, sources present).
 - **Fuzz Testing:** Includes `FuzzGrossToNet_NetToGross` verifying property invariance on arbitrary inputs.
