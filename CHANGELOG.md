@@ -14,6 +14,11 @@ Entries that change computed amounts are marked **(results change)**.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-21
+
+No change in any computed amount for existing inputs. New: 10% withholding,
+foreign employees, non-residents.
+
 ### Added
 
 - `FlatWithholding`: the 10% PIT withheld from a payment to a resident
@@ -173,7 +178,8 @@ First public release.
 - The caller chooses the region; an insurance base below the regional
   minimum wage is not rejected.
 
-[Unreleased]: https://github.com/HuynhNhatKhanh/vnsalary/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/HuynhNhatKhanh/vnsalary/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/HuynhNhatKhanh/vnsalary/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/HuynhNhatKhanh/vnsalary/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/HuynhNhatKhanh/vnsalary/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/HuynhNhatKhanh/vnsalary/compare/v0.2.0...v0.3.0
