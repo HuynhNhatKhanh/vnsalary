@@ -342,6 +342,7 @@ and a real test of how pleasant the API is.
 | 2026-10-21 | `NetToGross` searches a 32 VND window below the first match for non-residents only | with extras their net can fall by 1 VND, so grosses with one net need not be contiguous; residents keep the one-step walk, proven by `TestNetSteps_ZeroOrOne`, and its speed |
 | 2026-10-21 | Employer accident rate and union fee in `Options.Employer`, rates in `Policy` (thousandths) | they change the employer's cost only; the zero value keeps earlier results; a 2027 rate becomes a policy edit. The union fee is off by default because callers compare `TotalCost` across versions |
 | 2026-10-21 | Union fee on the capped social insurance salary | the law's base is the "salary fund used for compulsory social insurance", which is capped at 20 × the reference level |
+| 2026-10-21 | Homebrew and Scoop from one `homebrew-tap` repository, written by a shell script instead of goreleaser ([#12](https://github.com/HuynhNhatKhanh/vnsalary/issues/12)) | the release already builds and checksums the archives (`build-release.sh`); generating two small files from `checksums.txt` keeps one build path and no new tool. One repository serves both: Homebrew reads `Formula/`, Scoop reads `bucket/` |
 | 2026-10-21 | Residence and nationality are separate options | a foreigner can be a tax resident and a Vietnamese citizen a non-resident; insurance follows nationality, tax follows residence |
 | 2026-10-20 | `FlatWithholding` computes tax only; below the threshold `Withheld` is 0 | withholding on request and the deferral commitment are the individual's choice; insurance depends on the contract, not on the tax rule |
 
@@ -380,8 +381,10 @@ Law changes are released as soon as the document is issued, outside this
 order (for example the 2027 regional minimum wage,
 [#16](https://github.com/HuynhNhatKhanh/vnsalary/issues/16)).
 
-A web demo (`vnsalary-web`, a separate repository) and CLI binaries are planned
-outside these milestones.
+A web demo (`vnsalary-web`, a separate repository) is planned outside these
+milestones. CLI binaries ship with every release (v0.3.1), and Homebrew and
+Scoop install from `HuynhNhatKhanh/homebrew-tap`, updated by the release
+workflow ([#12](https://github.com/HuynhNhatKhanh/vnsalary/issues/12)).
 
 ## 14. Open questions
 

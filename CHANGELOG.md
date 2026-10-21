@@ -14,6 +14,15 @@ Entries that change computed amounts are marked **(results change)**.
 
 ## [Unreleased]
 
+### Added
+
+- Homebrew (`brew install HuynhNhatKhanh/tap/vnsalary`) and Scoop
+  (`scoop bucket add huynhnhatkhanh https://github.com/HuynhNhatKhanh/homebrew-tap`)
+  installs. The `Release` workflow writes the formula and the manifest from
+  `checksums.txt` (`scripts/package-manifests.sh`) and pushes them to
+  `HuynhNhatKhanh/homebrew-tap`
+  ([#12](https://github.com/HuynhNhatKhanh/vnsalary/issues/12)).
+
 ## [0.6.0] - 2026-10-21
 
 No change in any computed amount for existing inputs. New: employer options

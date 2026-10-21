@@ -36,3 +36,42 @@ jobs:
             gh release create "$VERSION" --title "$VERSION" --notes-file notes.md
           fi
           gh release upload "$VERSION" dist/* --clobber
+
+  # Updates Formula/vnsalary.rb and bucket/vnsalary.json in
+  # HuynhNhatKhanh/homebrew-tap from the release checksums. Needs the
+  # TAP_GITHUB_TOKEN secret: a fine-grained token limited to that repository
+  # with Contents read and write. Without it, or for a pre-release tag, the
+  # job only logs a notice.
+  packages:
+    name: update Homebrew tap and Scoop bucket
+    needs: binaries
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: generate and push manifests
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAP_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+          VERSION: ${{ github.ref_name }}
+        run: |
+          if [ -z "$TAP_TOKEN" ]; then
+            echo "::notice::TAP_GITHUB_TOKEN is not set; Homebrew tap and Scoop bucket not updated"
+            exit 0
+          fi
+          case "$VERSION" in *-*) echo "::notice::pre-release $VERSION; manifests not updated"; exit 0 ;; esac
+
+          gh release download "$VERSION" --pattern checksums.txt --dir release
+          git clone --depth 1 "https://x-access-token:${TAP_TOKEN}@github.com/HuynhNhatKhanh/homebrew-tap.git" tap
+          scripts/package-manifests.sh "$VERSION" release/checksums.txt tap
+
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/vnsalary.rb bucket/vnsalary.json
+          if git diff --cached --quiet; then
+            echo "manifests already at $VERSION"
+            exit 0
+          fi
+          git commit -m "vnsalary $VERSION"
+          git push
