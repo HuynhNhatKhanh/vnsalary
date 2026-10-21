@@ -380,7 +380,7 @@ BenchmarkNetToGross-16       111998         12749   ns/op       12920 B/op      
 ```bash
 go test -cover ./...
 ```
-Độ bao phủ code ở v0.5.0: thư viện **97,5 96,2 %**, CLI **%**.
+Độ bao phủ code ở v0.6.0: thư viện **97,7%**, CLI **96,4%**.
 
 ---
 
