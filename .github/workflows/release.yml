@@ -46,6 +46,10 @@ jobs:
     name: update Homebrew tap and Scoop bucket
     needs: binaries
     runs-on: ubuntu-latest
+    # Tap updates from different tags run one at a time, never cancelled.
+    concurrency:
+      group: homebrew-tap
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v7
 
@@ -63,6 +67,15 @@ jobs:
 
           gh release download "$VERSION" --pattern checksums.txt --dir release
           git clone --depth 1 "https://x-access-token:${TAP_TOKEN}@github.com/HuynhNhatKhanh/homebrew-tap.git" tap
+
+          # A rerun of an older release must not replace newer manifests.
+          current=$(jq -r '.version // "0.0.0"' tap/bucket/vnsalary.json 2>/dev/null || echo 0.0.0)
+          newest=$(printf '%s\n%s\n' "$current" "${VERSION#v}" | sort -V | tail -n 1)
+          if [ "$newest" != "${VERSION#v}" ]; then
+            echo "::notice::the tap already has $current, newer than $VERSION; not updated"
+            exit 0
+          fi
+
           scripts/package-manifests.sh "$VERSION" release/checksums.txt tap
 
           cd tap
