@@ -554,7 +554,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	bonus := flags.Int64("bonus", 0, "")
 	foreigner := flags.Bool("foreigner", false, "")
 	nonResident := flags.Bool("non-resident", false, "")
-	accidentRate := flags.String("accident-rate", "", "")
+	accidentRate := flags.String("accident-rate", "", "") // validated whenever given, even empty
 	unionFee := flags.Bool("union-fee", false, "")
 	flags.String("lang", "vi", "") // already read by detectLang
 	asJSON := flags.Bool("json", false, "")
@@ -621,7 +621,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	var accident *int64
-	if *accidentRate != "" {
+	accidentGiven := false
+	flags.Visit(func(f *flag.Flag) { accidentGiven = accidentGiven || f.Name == "accident-rate" })
+	if accidentGiven {
 		v, ok := parsePerMille(*accidentRate)
 		if !ok {
 			return errorf(stderr, 2, m.errBadRate, *accidentRate)

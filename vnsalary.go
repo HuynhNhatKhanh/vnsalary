@@ -117,10 +117,10 @@ type BracketLine struct {
 
 // EmployerCost itemizes statutory employer contributions and total company expenditure.
 type EmployerCost struct {
-	Social         VND `json:"social"`              // Social insurance (BHXH) 17.5% (14% pension/death, 3% sickness/maternity, 0.5% occupational accident)
+	Social         VND `json:"social"`              // Social insurance (BHXH): 17% + the accident rate, 17.5% by default (14% pension/death, 3% sickness/maternity, 0.5% occupational accident unless EmployerOptions.AccidentPerMille)
 	Health         VND `json:"health"`              // Health insurance (BHYT) 3%
-	Unemployment   VND `json:"unemployment"`        // Unemployment insurance (BHTN) 1%
-	TotalInsurance VND `json:"total_insurance"`     // Total employer contribution (21.5%)
+	Unemployment   VND `json:"unemployment"`        // Unemployment insurance (BHTN) 1%, none for a foreigner
+	TotalInsurance VND `json:"total_insurance"`     // Total employer contribution (21.5% by default; 20.5% for a foreigner; less with a lower accident rate)
 	UnionFee       VND `json:"union_fee,omitempty"` // Trade union fee (2%), when EmployerOptions.UnionFee is set
 	TotalCost      VND `json:"total_cost"`          // Total employer cost = Gross + TotalInsurance + UnionFee
 }

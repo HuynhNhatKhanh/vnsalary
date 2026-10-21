@@ -67,6 +67,7 @@ func TestRun_ExitCodesAndMessages(t *testing.T) {
 		{"non-resident net", []string{"net", "43193000", "--foreigner", "--non-resident", "--date", "2026-08-10"}, 0, "LƯƠNG GROSS: 60.000.000 đ", ""},
 		{"accident rate", []string{"gross", "30000000", "--accident-rate", "0.3", "--union-fee", "--date", "2026-08-10", "--lang", "en"}, 0, "+ Trade Union Fee 600,000 VND)", ""},
 		{"bad accident rate", []string{"gross", "30000000", "--accident-rate", "1.5"}, 2, "", "--accident-rate"},
+		{"empty accident rate", []string{"gross", "30000000", "--accident-rate="}, 2, "", `(nhận được "")`},
 		{"bad accident rate decimals", []string{"gross", "30000000", "--accident-rate", "0.25"}, 2, "", `"0.25"`},
 		{"flat rejects union fee", []string{"flat", "8000000", "--union-fee"}, 2, "", "lệnh flat không dùng cờ -union-fee"},
 		{"flat rejects non-resident", []string{"flat", "8000000", "--non-resident"}, 2, "", "lệnh flat không dùng cờ -non-resident"},
