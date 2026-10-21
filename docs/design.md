@@ -372,6 +372,9 @@ how often users are likely to need it:
   ([#7](https://github.com/HuynhNhatKhanh/vnsalary/issues/7)), foreign
   employees ([#9](https://github.com/HuynhNhatKhanh/vnsalary/issues/9)),
   non-residents ([#8](https://github.com/HuynhNhatKhanh/vnsalary/issues/8)).
+- **v0.6.0** (released): employer options, the accident insurance rate
+  ([#10](https://github.com/HuynhNhatKhanh/vnsalary/issues/10)) and the trade
+  union fee ([#11](https://github.com/HuynhNhatKhanh/vnsalary/issues/11)).
 
 Law changes are released as soon as the document is issued, outside this
 order (for example the 2027 regional minimum wage,
